@@ -9,11 +9,18 @@ import (
 )
 
 // The evauator is capable of running either a JavaScript
-// or regexp valdaiton.
+// or regexp validation.  It allows custom mapping
+// functions for mapping Go types to JavaScript types.
+// This is useful for items such as time.Time, where otto
+// by default treats it as a generic JS Object, but using a
+// JS Date() is a far better mapping.  In fact, the
+// aformentioned mapping is already done, but the user
+// may add additional such functions.
 type evaluator struct {
 	vm      *otto.Otto
 	regexps map[string]*regexp.Regexp
 	mapping map[reflect.Type]typeMapper
+	scripts map[string]*otto.Script
 }
 
 type typeMapper func(interface{}) (*otto.Object, error)
@@ -23,6 +30,7 @@ func newEvaluator() *evaluator {
 		vm:      otto.New(),
 		regexps: make(map[string]*regexp.Regexp),
 		mapping: make(map[reflect.Type]typeMapper),
+		scripts: make(map[string]*otto.Script),
 	}
 }
 
@@ -57,7 +65,16 @@ func (e *evaluator) evalBoolExpr(name string, val interface{}, expr string) (
 		return false, err
 	}
 
-	res, err := e.vm.Run(expr)
+	script := e.scripts[expr]
+	if script == nil {
+		script, err = e.vm.Compile("", expr)
+		if err != nil {
+			return false, err
+		}
+		e.scripts[expr] = script
+	}
+
+	res, err := e.vm.Run(script)
 	if err != nil {
 		return false, err
 	}
