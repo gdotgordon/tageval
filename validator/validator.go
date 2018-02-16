@@ -260,7 +260,6 @@ func (v Validator) processTag(f reflect.StructField,
 	if exprTag != "" {
 		bv, err := v.eval.evalBoolExpr(f.Name, iface, exprTag)
 		if err != nil {
-			fmt.Printf("err: %v\n", err)
 			return err
 		}
 		r := &Result{
@@ -324,9 +323,25 @@ func (res *Result) String() string {
 	var tstr string
 	switch tn.Kind() {
 	case reflect.Slice:
-		tstr = "[]" + tn.Elem().Name()
+		var name string
+		if tn.Elem().Kind() == reflect.Interface {
+			name = "interface{}"
+		} else {
+			name = tn.Elem().Name()
+		}
+		tstr = "[]" + name
 	case reflect.Array:
 		tstr = fmt.Sprintf("[%d]%s", tn.Size(), tn.Elem().Name())
+	case reflect.Map:
+		tstr = fmt.Sprintf("map[%s]%s", tn.Key(), tn.Elem())
+	case reflect.Chan:
+		var name string
+		if tn.Elem().Kind() == reflect.Interface {
+			name = "interface{}"
+		} else {
+			name = tn.Elem().Name()
+		}
+		tstr = "chan(" + name + ")"
 	default:
 		tstr = tn.Name()
 	}

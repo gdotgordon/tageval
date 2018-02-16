@@ -44,18 +44,19 @@ type MyStruct struct {
 	I      map[string]int
 	j      string
 	K      Talker
-	L      string    `regexp:"^[aeiou]{4}$|hello"`
-	M      float64   `expr:"M == 3.14"`
-	N      time.Time `expr:"N.getMonth() == new Date().getMonth()"`
-	P      []int     `expr:"var sum = P.reduce(function(pv, cv) { return pv + cv; }, 0); sum == 10"`
-	Talker           // Not supported, as we don't have a name.
+	L      string        `regexp:"^[aeiou]{4}$|hello"`
+	M      float64       `expr:"M == 3.14"`
+	N      time.Time     `expr:"N.getMonth() == new Date().getMonth()"`
+	P      []int         `expr:"var sum = P.reduce(function(pv, cv) { return pv + cv; }, 0); sum == 10"`
+	Q      []interface{} `expr:"Q.length == 0"`
+	Talker               // Not supported, as we don't have a name.
 }
 
 func (ms MyStruct) move(string) (int, error) {
 	return 45, nil
 }
 
-func TestValidation(t *testing.T) {
+func testValidationOlio(t *testing.T) {
 	b1 := byte(3)
 	ms1 := &MyStruct{A: 1, B: time.Now(), C: "hello",
 		D: []Another{Another{"Joe", "Plano, TX"}},
@@ -69,8 +70,8 @@ func TestValidation(t *testing.T) {
 		t.Fatalf("validation failed with error: %v", err)
 	}
 	res.PrintResults(os.Stdout)
-	if len(res.Succ) != 10 {
-		t.Fatalf("validation expected 9 successes, got %d",
+	if len(res.Succ) != 11 {
+		t.Fatalf("validation expected 11 successes, got %d",
 			len(res.Succ))
 	}
 
@@ -80,7 +81,91 @@ func TestValidation(t *testing.T) {
 	}
 }
 
-func TestEvaluation(t *testing.T) {
+func testChannelExprs(t *testing.T) {
+	type StructWithChan struct {
+		Chan1 chan (int)         `expr:"Chan1.cap==8"`
+		Chan2 chan (int)         `expr:"Chan2.cap==0"`
+		Chan3 chan (interface{}) `expr:"Chan3.cap==0"`
+	}
+
+	swc := StructWithChan{
+		Chan1: make(chan (int), 8),
+		Chan3: make(chan (interface{})),
+	}
+
+	// JSON serialization doesn't handle channels, but we can
+	// still validate channels in a non JSON context.  However,
+	// we need to create custom mapping s for each channel type.
+	// In this case, we'll define functions that allows us to check
+	// the channel capacity by creating a js Object with one field.
+	v := NewValidator()
+	v.ignoreJSONTags = true
+	v.AddTypeMapping(reflect.TypeOf(swc.Chan1),
+		func(i interface{}) string {
+			c := i.(chan (int))
+			return fmt.Sprintf("new Object({cap: %d})", cap(c))
+		})
+	v.AddTypeMapping(reflect.TypeOf(swc.Chan3),
+		func(i interface{}) string {
+			c := i.(chan (interface{}))
+			return fmt.Sprintf("new Object({cap: %d})", cap(c))
+		})
+	res, err := v.Validate(&swc)
+	if err != nil {
+		t.Fatalf("validation failed with error: %v", err)
+	}
+
+	fmt.Printf("chan succ = %v\n", res.Succ)
+	fmt.Printf("chan fail = %v\n", res.Fail)
+	if len(res.Succ) != 3 || len(res.Fail) != 0 {
+		t.Fatalf("wrong number of expected successes and failues")
+	}
+}
+
+func TestMap(t *testing.T) {
+	type Other struct {
+		Person string
+		Where  string
+	}
+
+	type MapTest struct {
+		Name string
+		M    map[string]int   `expr:"M[\"Jane\"] == 5"`
+		N    map[string]Other `expr:"N[\"Bob\"][\"Where\"] == \"Somewhere\""`
+	}
+
+	mt := &MapTest{
+		Name: "Mary",
+		M:    map[string]int{"Jane": 5},
+		N:    map[string]Other{"Bob": Other{"Sue", "Somewhere"}},
+	}
+
+	v := NewValidator()
+	res, err := v.Validate(mt)
+	if err != nil {
+		t.Fatalf("validation failed with error: %v", err)
+	}
+	fmt.Printf("res: %v\n", res)
+	if len(res.Succ) != 2 || len(res.Fail) != 0 {
+		t.Fatalf("wrong number of expected successes and failues")
+	}
+
+	mt = &MapTest{
+		Name: "Mary",
+		M:    map[string]int{"Jane": 5},
+		N:    map[string]Other{"Bob": Other{"Sue", "Anywhere"}},
+	}
+	res, err = v.Validate(mt)
+	if err != nil {
+		t.Fatalf("validation failed with error: %v", err)
+	}
+	fmt.Printf("res: %v\n", res)
+	if len(res.Succ) != 1 || len(res.Fail) != 1 {
+		t.Fatalf("wrong number of expected successes and failues")
+	}
+}
+
+func testEvaluation(t *testing.T) {
 	v := newEvaluator()
 
 	expr := "b < 7.01"
