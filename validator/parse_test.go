@@ -18,36 +18,37 @@ func (a Another) String() string {
 	return "hello"
 }
 
-type Mover interface {
-	move(string) (int, error)
+type Talker interface {
+	Talk() string
 }
 
-type MovingInt int
+type TalkingInt int
 
-func (m MovingInt) move(string) (int, error) {
-	return int(m), nil
+func (t TalkingInt) Talk() string {
+	return fmt.Sprintf("Hi, let me introudce myself, I am '%d'", t)
 }
 
-func (m MovingInt) String() string {
-	return strconv.Itoa(int(m))
+func (t TalkingInt) String() string {
+	return strconv.Itoa(int(t))
 }
 
 type MyStruct struct {
-	A int       `json:"a,omitempty" expr:"A>5"`
-	B time.Time `json:"b"`
-	C string    `regexp:"^[aeiou]{4}$|hello"`
-	D []Another
-	E *byte `expr:"E == 4"`
-	F chan Another
-	G Another `expr:"G[\"Fred\"].length > 2 && G[\"Location\"] == \"Oshkosh, WI\""`
-	H Mover   `json:"mover" expr:"H < 400" regexp:"^[0-9]$"`
-	I map[string]int
-	j string
-	K Mover
-	L string    `regexp:"^[aeiou]{4}$|hello"`
-	M float64   `expr:"M == 3.14"`
-	N time.Time `expr:"N.getMonth() == new Date().getMonth()"`
-	Mover
+	A      int       `json:"a,omitempty" expr:"A>5"`
+	B      time.Time `json:"b"`
+	C      string    `regexp:"^[aeiou]{4}$|hello"`
+	D      []Another
+	E      *byte `expr:"E == 4"`
+	F      chan Another
+	G      Another `expr:"G[\"Fred\"].length > 2 && G[\"Location\"] == \"Oshkosh, WI\""`
+	H      Talker  `json:"talker" expr:"H < 400" regexp:"^[0-9]$"`
+	I      map[string]int
+	j      string
+	K      Talker
+	L      string    `regexp:"^[aeiou]{4}$|hello"`
+	M      float64   `expr:"M == 3.14"`
+	N      time.Time `expr:"N.getMonth() == new Date().getMonth()"`
+	P      []int     `expr:"var sum = P.reduce(function(pv, cv) { return pv + cv; }, 0); sum == 10"`
+	Talker           // Not supported, as we don't have a name.
 }
 
 func (ms MyStruct) move(string) (int, error) {
@@ -59,13 +60,23 @@ func TestValidation(t *testing.T) {
 	ms1 := &MyStruct{A: 1, B: time.Now(), C: "hello",
 		D: []Another{Another{"Joe", "Plano, TX"}},
 		E: &b1, G: Another{"bingo", "Oshkosh, WI"},
-		H: MovingInt(7), I: map[string]int{"green": 12, "blue": 93}, j: "a",
-		L: "uoiea", M: 3.14, N: time.Now().Add(2 * time.Second)}
+		H: TalkingInt(7), I: map[string]int{"green": 12, "blue": 93}, j: "a",
+		L: "uoiea", M: 3.14, N: time.Now().Add(2 * time.Second),
+		P: []int{1, 2, 3, 4}}
 	v := NewValidator()
 	res, err := v.Validate(ms1)
-	fmt.Println("error: ", err)
-	if err == nil {
-		res.PrintResults(os.Stdout)
+	if err != nil {
+		t.Fatalf("validation failed with error: %v", err)
+	}
+	res.PrintResults(os.Stdout)
+	if len(res.Succ) != 10 {
+		t.Fatalf("validation expected 9 successes, got %d",
+			len(res.Succ))
+	}
+
+	if len(res.Fail) != 4 {
+		t.Fatalf("validation expected 4 failures, got %d",
+			len(res.Fail))
 	}
 }
 

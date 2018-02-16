@@ -20,7 +20,7 @@ const (
 type LogLevel int
 
 // Logger is a simple logger with configurable level filter that
-//avoids uneeded string construction.
+// avoids uneeded string construction.
 // Inspired in part by:
 // https://www.ardanlabs.com/blog/2013/11/using-log-package-in-go.html
 // and also the Java 8 addition of lambdas to the logging API.

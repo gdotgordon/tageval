@@ -18,14 +18,16 @@ import (
 	"unicode"
 )
 
-// Tag names for the types of validation we do.  A JSON tag
-// may or may not be present.
+// Tag names for the types of validation that can be done.
+// Note a JSON tag may or may not be present.
 // Example struct members
 // LastName string `json:"last_name" expr:"LastName.length<10"`
 // LastName string `expr:"LastName.length<10"`
 //
 // State string `json:"state" regexp:"[A-Z]{2}"`
 // State string `regexp:"[A-Z]{2}"`
+//
+// MyName string `json:"my_name" expr:"MyName.length<10" regexp:"^\p{L}.*$`
 const (
 	ExprTag   = "expr"
 	RegexpTag = "regexp"
@@ -61,20 +63,35 @@ type Results struct {
 	Fail []*Result
 }
 
-type MappingFunc func(interface{}) string
+// TypeMapper delcares the signature of the function to add a
+// custom type mapping.  Essentially, the string returned is a
+// JavaScript fragment that creates an object that is somehwat
+// equivalent or analagous to a Go type.
+//
+//The issue is that the built in js interpreter may treat some
+// semantically menaingful types as generic structs, and because
+// the field are mostly prviate, they aren't too useful to use in.
+// js.  It may be helpful to view the built-in mapping of time.Time
+// to a js Date object (below), where the string returned is a js
+// code fragment that invokes "new Date()".
+//
+// This can be done for any type desired, using an exemplar of the
+// type as the incoming interface{} parameter.
+type TypeMapper func(interface{}) string
 
 var (
-	mappers map[reflect.Type]MappingFunc
+	mappers map[reflect.Type]TypeMapper
 
+	// TimeMapper is the default mapper from time.Time -> js Date.
 	TimeMapper = func(i interface{}) string {
 		t := i.(time.Time)
-		us := (t.UnixNano() / 1000000)
+		us := (t.UnixNano() / 1000000) // need ms for js
 		return fmt.Sprintf("new Date(%d)", us)
 	}
 )
 
 func init() {
-	mappers = make(map[reflect.Type]MappingFunc)
+	mappers = make(map[reflect.Type]TypeMapper)
 	mappers[reflect.TypeOf(time.Now())] = TimeMapper
 }
 
@@ -82,15 +99,18 @@ func init() {
 // inspecting any item (interface{}).
 func NewValidator() *Validator {
 	eval := newEvaluator()
-	fmt.Printf("size of mappers: %d\n", len(mappers))
 	for k, f := range mappers {
 		eval.addTypeMapping(k, f)
 	}
 	return &Validator{eval: eval}
 }
 
-func (v *Validator) AddTypeMapping(t reflect.Type, mf MappingFunc) {
-	v.eval.addTypeMapping(t, mf)
+// AddTypeMapping allows the user to declare and add their
+// own type mapping to be used by the js engine.  The type
+// mapping function is explained in the TypeMapper type
+// declaation (above).
+func (v *Validator) AddTypeMapping(t reflect.Type, tm TypeMapper) {
+	v.eval.addTypeMapping(t, tm)
 }
 
 // Validate a Go item of any kind.  If the item is not a struct,
@@ -177,7 +197,9 @@ func (v Validator) traverse(val reflect.Value, res *Results) error {
 				break
 			}
 			if unicode.IsUpper(first) {
-				v.processTag(f, val.Field(i), res)
+				if err = v.processTag(f, val.Field(i), res); err != nil {
+					return err
+				}
 			}
 			if err = v.traverse(val.Field(i), res); err != nil {
 				return err
@@ -229,7 +251,7 @@ func (v Validator) processTag(f reflect.StructField,
 		isZero := reflect.DeepEqual(iface,
 			reflect.Zero(reflect.TypeOf(iface)).Interface())
 		if isZero {
-			fmt.Printf("Skip zero value for %s, '%v'\n", f.Name, iface)
+			logger.Info("Skip zero value for %s, '%v'\n", f.Name, iface)
 			return nil
 		}
 	}
@@ -238,6 +260,7 @@ func (v Validator) processTag(f reflect.StructField,
 	if exprTag != "" {
 		bv, err := v.eval.evalBoolExpr(f.Name, iface, exprTag)
 		if err != nil {
+			fmt.Printf("err: %v\n", err)
 			return err
 		}
 		r := &Result{
@@ -276,6 +299,9 @@ func (v Validator) processTag(f reflect.StructField,
 	return nil
 }
 
+// For validation, use a reasonable string value if we can
+// determine one for the type, otherwise use the default
+// "fmt" stirng conversion.
 func (v Validator) iToStr(i interface{}) string {
 	switch i.(type) {
 	case string:
@@ -294,8 +320,18 @@ func (v Validator) iToStr(i interface{}) string {
 }
 
 func (res *Result) String() string {
+	tn := reflect.TypeOf(res.Value)
+	var tstr string
+	switch tn.Kind() {
+	case reflect.Slice:
+		tstr = "[]" + tn.Elem().Name()
+	case reflect.Array:
+		tstr = fmt.Sprintf("[%d]%s", tn.Size(), tn.Elem().Name())
+	default:
+		tstr = tn.Name()
+	}
 	return fmt.Sprintf("'%s': expr: '%s' item: '%+v' (type: %v)",
-		res.Name, res.Expr, res.Value, reflect.TypeOf(res.Value).Name())
+		res.Name, res.Expr, res.Value, tstr)
 }
 
 // PrintResults shows the lists of successful and unsuccessful
