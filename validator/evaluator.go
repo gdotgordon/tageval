@@ -8,14 +8,13 @@ import (
 	"github.com/robertkrimen/otto"
 )
 
-// The evauator is capable of running either a JavaScript
-// or regexp validation.  It allows custom mapping
-// functions for mapping Go types to JavaScript types.
-// This is useful for items such as time.Time, where otto
-// by default treats it as a generic JS Object, but using a
-// JS Date() is a far better mapping.  In fact, the
-// aformentioned mapping is already done, but the user
-// may add additional such functions.
+// The evauator is capable of running either a JavaScript or regexp
+// validation.  It allows custom mapping functions for mapping Go types
+// to JavaScript types.  This is useful for items such as time.Time,
+// where otto by default treats it as a generic JS Object, but using a
+// JS Date() is a far better mapping.  In fact, the aformentioned
+// time.Time -> Date mapping is already done, but the user may add
+// additional such custom type mapping functions.
 type evaluator struct {
 	vm      *otto.Otto
 	regexps map[string]*regexp.Regexp
@@ -23,9 +22,9 @@ type evaluator struct {
 	scripts map[string]*otto.Script
 }
 
-// The internalTypeMapper takes the user defined and publicd TypeMapper
-// function, and does the final step of creating an otto.Object to
-// hold the user's type declaration JavaScript.
+// The internalTypeMapper takes an instance of a function of the public
+// type TypeMapper, and does the final step of creating an otto.Object
+// that represents the JavaScript instantiation code in the input function.
 type internalTypeMapper func(interface{}) (*otto.Object, error)
 
 func newEvaluator() *evaluator {
@@ -40,8 +39,7 @@ func newEvaluator() *evaluator {
 // addTypeMapping takes the user-defined conversion function,
 // which should return a js type-creation expression, and wraps
 // that in an otto object, so it may be used with the engine.
-func (e *evaluator) addTypeMapping(t reflect.Type,
-	f func(interface{}) string) {
+func (e *evaluator) addTypeMapping(t reflect.Type, f TypeMapper) {
 	tmf := func(i interface{}) (*otto.Object, error) {
 		obj, err := e.vm.Object(f(i))
 		if err != nil {
