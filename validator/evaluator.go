@@ -8,7 +8,7 @@ import (
 	"github.com/robertkrimen/otto"
 )
 
-// The evauator is capable of running either a JavaScript or regexp
+// The evaluator is capable of running either a JavaScript or regexp
 // validation.  It allows custom mapping functions for mapping Go types
 // to JavaScript types.  This is useful for items such as time.Time,
 // where otto by default treats it as a generic JS Object, but using a
@@ -52,11 +52,14 @@ func (e *evaluator) addTypeMapping(t reflect.Type, f TypeMapper) {
 	e.mapping[t] = tmf
 }
 
-// Evaluate a boolean JavaScript expression.
+// Evaluate a boolean JavaScript expression.  Returns the bool
+// as per whether the validation succeeded, or an error if something
+// went wrong evaluatng the expression.
 func (e *evaluator) evalBoolExpr(name string, val interface{}, expr string) (
 	bool, error) {
 
-	// First check if the type has a custom mapping function.
+	// First check if the type has a custom mapping function, and if so,
+	// use that.
 	f, ok := e.mapping[reflect.TypeOf(val)]
 	if ok {
 		var err error
@@ -68,7 +71,7 @@ func (e *evaluator) evalBoolExpr(name string, val interface{}, expr string) (
 
 	// Set the name of the variable (i.e. the field name) to
 	// its value, which is either it's current Go value, or
-	// the crresponding custom js type.
+	// the corresponding custom js type.
 	err := e.vm.Set(name, val)
 	if err != nil {
 		return false, err
@@ -86,8 +89,8 @@ func (e *evaluator) evalBoolExpr(name string, val interface{}, expr string) (
 	}
 
 	// Run the thing and get the boolean result (or capature any error).
-	// Note, an error should not happen undernormal circumstances, as it
-	// is distinct frmo a validation function evaluating to "false".
+	// Note, an error should not happen under normal circumstances, as it
+	// is distinct from a validation function evaluating to "false".
 	res, err := e.vm.Run(script)
 	if err != nil {
 		return false, err
@@ -101,7 +104,7 @@ func (e *evaluator) evalBoolExpr(name string, val interface{}, expr string) (
 }
 
 // Evaluate a regular expression using the built-in Go mechanism.
-// Again, the compiled expression is memoized for efficiency.
+// The compiled expression is memoized for efficiency.
 func (e *evaluator) evalRegexp(val string, pattern string) (bool, error) {
 	rexp := e.regexps[pattern]
 	if rexp == nil {

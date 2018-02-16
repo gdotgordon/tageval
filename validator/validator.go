@@ -1,9 +1,9 @@
-// Package validator implements per-field validation for
-// for struct members, by adding custom tags containing expressions.
-// There are two types of validation supported: boolean JavaScript
+// Package validator implements per-field validation for struct
+// members, by adding custom tags containing expressions.  There
+// are two types of validation supported: boolean JavaScript
 // expressions for the current field (or contained structure members)
 // using the "otto" embedded JavaScript engine, and regexp evaluations
-// where this can be dome (strings or any Stringer objects).  A list
+// where this can be done (strings or any Stringer objects).  A list
 // of all failed and optionally successful validations is returned.
 package validator
 
@@ -18,7 +18,7 @@ import (
 	"unicode"
 )
 
-// Tag names for the types of validation that can be done.
+// Struct tag names for the types of validation that can be done.
 // Note a JSON tag may or may not be present.
 // Example struct members
 // LastName string `json:"last_name" expr:"LastName.length<10"`
@@ -37,8 +37,8 @@ var (
 	logger = NewLogger(os.Stderr, Trace)
 )
 
-// The Validator traverses the value of any interface{}
-// to locate our custom tags as well as JSON tags.  It will
+// The Validator traverses a given interface{} instance to
+// locate our custom tags as well as JSON tags.  It will
 // validate any fields that contain validation expressions,
 // either JavaScript expressions or regexps, and report back
 // The results of the validation.
@@ -47,17 +47,17 @@ type Validator struct {
 	eval           *evaluator
 }
 
-// A Result captures the data from a single evaluation, including,
-// most importantly, whether the validation succeeded.
+// A Result captures the data from a single evaluation.  The validation
+// returns separate lists of successful and failed validations containing
+// the following information.
 type Result struct {
 	Name  string
 	Value interface{}
 	Expr  string
 }
 
-// Results are the entirety of a single validation run.  It
-// contians a list of successful validaions, and a list of
-// failed ones.
+// Results are the entirety of a single validation run.  A Results item
+// contains a list of successful validaions, and a list of failed ones.
 type Results struct {
 	Succ []*Result
 	Fail []*Result
@@ -66,12 +66,13 @@ type Results struct {
 // TypeMapper delcares the signature of the function to add a
 // custom type mapping.  Essentially, the string returned is a
 // JavaScript fragment that creates an object that is somehwat
-// equivalent or analagous to a Go type.
+// equivalent or analagous to a Go type, or at least useful for
+// evaluation purposes.
 //
-//The issue is that the built in js interpreter may treat some
-// semantically menaingful types as generic structs, and because
-// the field are mostly prviate, they aren't too useful to use in.
-// js.  It may be helpful to view the built-in mapping of time.Time
+// Unfortunaltey, the built in JavaScript interpreter may treat some
+// semantically meaningful types as generic structs, and because
+// the fields are mostly private, they aren't too useful in JavaScript.
+// It may be helpful to view the built-in mapping of time.Time
 // to a js Date object (below), where the string returned is a js
 // code fragment that invokes "new Date()".
 //
@@ -108,16 +109,17 @@ func NewValidator() *Validator {
 // AddTypeMapping allows the user to declare and add their
 // own type mapping to be used by the js engine.  The type
 // mapping function is explained in the TypeMapper type
-// declaation (above).
+// declaration (above).
 func (v *Validator) AddTypeMapping(t reflect.Type, tm TypeMapper) {
 	v.eval.addTypeMapping(t, tm)
 }
 
-// Validate a Go item of any kind.  If the item is not a struct,
-// or does not contain a struct anywhere, there will be nothing
-// to evaluate.  Returns the results of all vaidations, or an
-// error if something went wrong.  Note, failed validations do
-// not cause an error to be set.
+// Validate a Go item (or pointer) of any kind.  If the item is not
+// a struct, or does not contain or reference a struct anywhere, there
+// will be nothing to evaluate, as that is where all the tags live.
+// This function returns the results of all vaidations, or an error if
+// something went wrong.  Note, failed validations do not cause an error
+// to be returned.
 func (v *Validator) Validate(item interface{}) (*Results, error) {
 	res := &Results{}
 	if err := v.traverse(reflect.ValueOf(item), res); err != nil {
@@ -128,10 +130,8 @@ func (v *Validator) Validate(item interface{}) (*Results, error) {
 
 // The main processing loop is invoked recursively as we
 // traverse the value, eventually landing on a struct type,
-// which is where the tags ar efound.  Types such as built-ins
-// and channels require no further processing, so no acton happens.
-// Any bulit-ins that were struct fields were already processed when
-// handling the struct.
+// which is where the tags are found.  Types such as built-ins
+// and channels require no further processing, so no action happens.
 func (v Validator) traverse(val reflect.Value, res *Results) error {
 	var err error
 	t := val.Type()
@@ -215,7 +215,7 @@ func (v Validator) traverse(val reflect.Value, res *Results) error {
 func (v Validator) processTag(f reflect.StructField,
 	val reflect.Value, res *Results) error {
 
-	// Our expression eval tag.
+	// Our expression eval tags.
 	exprTag := f.Tag.Get("expr")
 	regexpTag := f.Tag.Get("regexp")
 	if exprTag == "" && regexpTag == "" {
@@ -237,8 +237,8 @@ func (v Validator) processTag(f reflect.StructField,
 		val = val.Elem()
 	}
 
-	// If the value is something like a nil interface
-	// concrete object, forget it.
+	// If the value is something like a nil interface concrete object,
+	// forget it.
 	if !val.IsValid() || !val.CanInterface() {
 		return nil
 	}
@@ -300,7 +300,7 @@ func (v Validator) processTag(f reflect.StructField,
 
 // For validation, use a reasonable string value if we can
 // determine one for the type, otherwise use the default
-// "fmt" stirng conversion.
+// "fmt" string conversion.
 func (v Validator) iToStr(i interface{}) string {
 	switch i.(type) {
 	case string:
@@ -353,7 +353,6 @@ func (res *Result) String() string {
 // validations.
 func (r *Results) PrintResults(w io.Writer) {
 	fmt.Fprintln(w, "Results:")
-	// Trying to avoid copying an item, so using iterative loop.
 	for i := 0; i < len(r.Succ); i++ {
 		if i == 0 {
 			fmt.Fprintln(w, "Successes:")

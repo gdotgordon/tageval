@@ -56,7 +56,7 @@ func (ms MyStruct) move(string) (int, error) {
 	return 45, nil
 }
 
-func testValidationOlio(t *testing.T) {
+func TestValidationOlio(t *testing.T) {
 	b1 := byte(3)
 	ms1 := &MyStruct{A: 1, B: time.Now(), C: "hello",
 		D: []Another{Another{"Joe", "Plano, TX"}},
@@ -165,7 +165,7 @@ func TestMap(t *testing.T) {
 	}
 }
 
-func testEvaluation(t *testing.T) {
+func TestEvaluation(t *testing.T) {
 	v := newEvaluator()
 
 	expr := "b < 7.01"
