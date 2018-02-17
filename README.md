@@ -6,7 +6,7 @@ This package implements per-field validation for Go struct members using custom 
 The package also supports standard Go `regexp` validation for fields where a string value can be ascertained (including items that implement the `fmt.Stringer` interface).  It would be easy to adapt the API to handle additional types of validation, but the two currently supported provide a good balanace between standard Go mechanisms and the power of a rich and easy-to-use programming language.
 
 ## How Does it Work?
-As mentioned, additional Go struct field tags are introdiuced, `eval` and `regexp`.  These are designed to either work alongside with JSON tgas and observe JSON rules such as `omitempty` and `-`, or work as an independent validation tool.
+As mentioned, additional Go struct field tags are introduced, `eval` and `regexp`.  These are designed to either work alongside with JSON tgas and observe JSON rules such as `omitempty` and `-`, or work as an independent validation tool.
 
 The following example is mostly to show how the tags look.  Validation for virtaully every Go type is supported, including channels, slices, arrays, etc., even if they would not be serialzed by the Go JSON serializer.
 ```type MyStruct struct {
