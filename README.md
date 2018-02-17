@@ -10,11 +10,11 @@ As mentioned, additional Go struct field tags are introduced, `eval` and `regexp
 
 The following example is mostly to show how the tags look.  Validation for virtaully every Go type is supported, including channels, slices, arrays, etc., even if they would not be serialzed by the Go JSON serializer.
 ```type MyStruct struct {
-  FirstName string ``json:"my_name" expr:"MyName.length<10" regexp:"^\p{L}.*$``
-  LastName string  ``json:"last_name" expr:"LastName.length<10"``
-  City string      ``expr:"City.length<10"``
-  State string     ``json:"state" regexp:"[A-Z]{2}"``
-  Data []int       ``expr:"var sum = P.reduce(function(pv, cv) { return pv + cv; }, 0); sum == 10"
+  FirstName string `json:"my_name" expr:"MyName.length<10" regexp:"^\p{L}.*$`
+  LastName string  `json:"last_name" expr:"LastName.length<10"`
+  City string      `expr:"City.length<10"`
+  State string     `json:"state" regexp:"[A-Z]{2}"`
+  Data []int       `expr:"var sum = P.reduce(function(pv, cv) { return pv + cv; }, 0); sum == 10"`
  }```
 
 <Work-in-progress - to be continued ...>
