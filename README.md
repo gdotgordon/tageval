@@ -56,7 +56,7 @@ In general, an expression uses the Go field's name (here "A") as the name of the
 
 This test shown here leads to an `ok` value of `false`, as the value of A is not greater than 5.  The `res` parameter is an object of type `Results`, which breaks down in detail the results of all successes and failures from the `Validate()` call.  This is extremely helpful for figuring out what went wrong, especially with multiple expressions, but may be ignored by assigning it to `_`.  Again, the `error` type is reserved for an execution error in the Validation, and not a validation failure.
 
-Now we'll try a very slightly mor complex example, a slice.  Assume the code from above, but change the struct definition and instance to be as follows:
+Now we'll try a very slightly more complex example, a slice.  Assume the code from above, but change the struct definition and instance to be as follows:
 
 ```
 type MyStruct struct {
