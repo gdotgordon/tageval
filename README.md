@@ -37,21 +37,22 @@ type MyStruct struct {
 }
 
 func main() {
-ms1 := &MyStruct{4}
-v := NewValidator()
-ok, res, err := v.Validate(ms1)
-if err != nil {
+	ms1 := &MyStruct{4}
+	v := NewValidator()
+	ok, res, err := v.Validate(ms1)
+	if err != nil {
 		fmt.Printf(os.Stderr, "validation failed with error: %v", err)
-    os.Exit(1)
-}
-if !ok {
+    	os.Exit(1)
+	}
+	if !ok {
 		t.Fatalf("unexpected failure result")
-}
-res.PrintResults(os.Stdout)
+	}
+	res.PrintResults(os.Stdout)
 }
 ```
-In general, the expression uses the Go field's name (here "A") as the name of the variable.  For more complex data types, such as structs, any or all of the contained fields may be used to build an evaluation expression (Go's struct fields are mapped to JavaScript object properties, so fields are accessed as property lookups, an example of which will be shown later).
 
-This test shown here leads to an `ok` value of `false`, as the value of A is not greater than 5.  The `res` parameter is an object of type `Results`, which breaks down in detail the results of all successes and failures from the `Validate()` call.  This is extremely helpful for figuring out what went wrong, but may be ignored by assigning it to `_`.  Again, the `error` type is reserved for an execution error in the Validation, and not a validation failure.
+In general, an expression uses the Go field's name (here "A") as the name of the variable.  For more complex data types, such as structs, any or all of the contained fields may be used to build an evaluation expression (Go's struct fields are mapped to JavaScript object properties, so fields are accessed as property lookups, an example of which will be shown later).
+
+This test shown here leads to an `ok` value of `false`, as the value of A is not greater than 5.  The `res` parameter is an object of type `Results`, which breaks down in detail the results of all successes and failures from the `Validate()` call.  This is extremely helpful for figuring out what went wrong, especially with multiple expressions, but may be ignored by assigning it to `_`.  Again, the `error` type is reserved for an execution error in the Validation, and not a validation failure.
 
 
