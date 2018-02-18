@@ -31,7 +31,7 @@ As far as the API is concerned, the default mode is to evaluate an `interface{}`
 Here is a very simple example:
 ```
 <imports here ...>
-import "github.com/GagordonCode/tageval"
+import "github.com/GGordonCode/tageval"
 
 type MyStruct struct {
 	A      int       `json:"a,omitempty" expr:"A>5"`
