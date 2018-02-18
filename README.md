@@ -31,6 +31,7 @@ As far as the API is concerned, the default mode is to evaluate an `interface{}`
 Here is a very simple example:
 ```
 <imports here ...>
+import "github.com/GagordonCode/tageval"
 
 type MyStruct struct {
 	A      int       `json:"a,omitempty" expr:"A>5"`
@@ -38,7 +39,7 @@ type MyStruct struct {
 
 func main() {
 	ms1 := &MyStruct{4}
-	v := NewValidator()
+	v := tageval.NewValidator()
 	ok, res, err := v.Validate(ms1)
 	if err != nil {
 		fmt.Printf(os.Stderr, "validation failed with error: %v", err)
