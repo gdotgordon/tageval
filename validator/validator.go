@@ -258,7 +258,14 @@ func (v Validator) processTag(f reflect.StructField,
 	// If the value is something like a nil interface concrete object,
 	// forget it.
 	var iface interface{}
-	if !val.IsValid() || !val.CanInterface() {
+
+	if !val.IsValid() {
+		return nil
+	}
+
+	if val.CanInterface() {
+		iface = val.Interface()
+	} else {
 		// Handle private builtin primitive types for starters.
 		switch val.Kind() {
 		case reflect.String:
@@ -277,8 +284,6 @@ func (v Validator) processTag(f reflect.StructField,
 				unsafe.Pointer(val.UnsafeAddr())).Elem()
 			iface = rf.Interface()
 		}
-	} else {
-		iface = val.Interface()
 	}
 
 	// Check whether this is the zero value for the type.  If

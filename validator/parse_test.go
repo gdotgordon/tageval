@@ -182,10 +182,11 @@ func TestPrivateFields(t *testing.T) {
 		other  []myob `expr:"(other[0]['Second'] - other[0]['First']) == -155"`
 		iptr   *int   `expr:"iptr == 75"`
 		b      noyb
+		z      *int `expr:"z == 5"`
 	}
 
 	ival := 75
-	p := privy{"Joe", 50, []int{3, 4}, []myob{{300, 145}}, &ival, noyb{"ick"}}
+	p := privy{"Joe", 50, []int{3, 4}, []myob{{300, 145}}, &ival, noyb{"ick"}, nil}
 	rv := reflect.ValueOf(&p).Elem()
 	v := NewValidator()
 	v.ignoreJSONTags = true
