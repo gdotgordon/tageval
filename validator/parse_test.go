@@ -42,7 +42,7 @@ type MyStruct struct {
 	G      Another `expr:"G[\"Fred\"].length > 2 && G[\"Location\"] == \"Oshkosh, WI\""`
 	H      Talker  `json:"talker" expr:"H < 400" regexp:"^[0-9]$"`
 	I      map[string]int
-	j      string
+	j      string `expr:"j[0] == 'P'"`
 	K      Talker
 	L      string        `regexp:"^[aeiou]{4}$|hello"`
 	M      float64       `expr:"M == 3.14"`
@@ -61,7 +61,7 @@ func TestValidationOlio(t *testing.T) {
 	ms1 := &MyStruct{A: 1, B: time.Now(), C: "hello",
 		D: []Another{Another{"Joe", "Plano, TX"}},
 		E: &b1, G: Another{"bingo", "Oshkosh, WI"},
-		H: TalkingInt(7), I: map[string]int{"green": 12, "blue": 93}, j: "a",
+		H: TalkingInt(7), I: map[string]int{"green": 12, "blue": 93}, j: "Pete",
 		L: "uoiea", M: 3.14, N: time.Now().Add(2 * time.Second),
 		P: []int{1, 2, 3, 4}}
 	v := NewValidator()
@@ -81,7 +81,7 @@ func TestValidationOlio(t *testing.T) {
 	}
 }
 
-func testChannelExprs(t *testing.T) {
+func TestChannelExprs(t *testing.T) {
 	type StructWithChan struct {
 		Chan1 chan (int)         `expr:"Chan1.cap==8"`
 		Chan2 chan (int)         `expr:"Chan2.cap==0"`
@@ -161,6 +161,40 @@ func TestMap(t *testing.T) {
 	}
 	fmt.Printf("res: %v\n", res)
 	if len(res.Succ) != 1 || len(res.Fail) != 1 {
+		t.Fatalf("wrong number of expected successes and failues")
+	}
+}
+
+func TestPrivateFields(t *testing.T) {
+	type myob struct {
+		First  int
+		Second int
+	}
+
+	type noyb struct {
+		blah string `regexp:"^ick$" expr:"blah == \"ick\""`
+	}
+
+	type privy struct {
+		name   string `expr:"name[0] == 'J'"`
+		age    int    `expr:"age > 21"`
+		things []int  `expr:"things[0] > 2 && things[1] > 0"`
+		other  []myob `expr:"(other[0]['Second'] - other[0]['First']) == -155"`
+		iptr   *int   `expr:"iptr == 75"`
+		b      noyb
+	}
+
+	ival := 75
+	p := privy{"Joe", 50, []int{3, 4}, []myob{{300, 145}}, &ival, noyb{"ick"}}
+	rv := reflect.ValueOf(&p).Elem()
+	v := NewValidator()
+	v.ignoreJSONTags = true
+	res, err := v.ValidateAddressable(rv)
+	if err != nil {
+		t.Fatalf("validation failed with error: %v", err)
+	}
+	fmt.Println(res)
+	if len(res.Succ) != 7 || len(res.Fail) != 0 {
 		t.Fatalf("wrong number of expected successes and failues")
 	}
 }

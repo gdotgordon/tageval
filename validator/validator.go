@@ -16,6 +16,7 @@ import (
 	"strings"
 	"time"
 	"unicode"
+	"unsafe"
 )
 
 // Struct tag names for the types of validation that can be done.
@@ -128,6 +129,14 @@ func (v *Validator) Validate(item interface{}) (*Results, error) {
 	return res, nil
 }
 
+func (v *Validator) ValidateAddressable(rpv reflect.Value) (*Results, error) {
+	res := &Results{}
+	if err := v.traverse(rpv, res); err != nil {
+		return nil, err
+	}
+	return res, nil
+}
+
 // The main processing loop is invoked recursively as we
 // traverse the value, eventually landing on a struct type,
 // which is where the tags are found.  Types such as built-ins
@@ -186,21 +195,27 @@ func (v Validator) traverse(val reflect.Value, res *Results) error {
 	case reflect.Struct:
 		for i := 0; i < t.NumField(); i++ {
 			f := t.Field(i)
-			logger.Trace("Field (%d) name: %s type: %v kind: %v\n",
-				i+1, f.Name, f.Type.Name(), f.Type.Kind())
 
-			// Cannot get the interface{} value of unexported fields, so
-			// cannot validate for those fields.
-			var first rune
-			for _, c := range f.Name {
-				first = c
-				break
+			// If following JSON serialization rules, skip
+			// any private fields.
+			handleTags := true
+			if !v.ignoreJSONTags {
+				var first rune
+				for _, c := range f.Name {
+					first = c
+					break
+				}
+				if !unicode.IsUpper(first) {
+					handleTags = false
+				}
 			}
-			if unicode.IsUpper(first) {
+
+			if handleTags {
 				if err = v.processTag(f, val.Field(i), res); err != nil {
 					return err
 				}
 			}
+
 			if err = v.traverse(val.Field(i), res); err != nil {
 				return err
 			}
@@ -231,6 +246,9 @@ func (v Validator) processTag(f reflect.StructField,
 		}
 	}
 
+	logger.Trace("Process tag, name: %s type: %v kind: %v\n",
+		f.Name, f.Type.Name(), f.Type.Kind())
+
 	// Get the underlying or concrete value.
 	switch val.Kind() {
 	case reflect.Ptr, reflect.Interface:
@@ -239,10 +257,29 @@ func (v Validator) processTag(f reflect.StructField,
 
 	// If the value is something like a nil interface concrete object,
 	// forget it.
+	var iface interface{}
 	if !val.IsValid() || !val.CanInterface() {
-		return nil
+		// Handle private builtin primitive types for starters.
+		switch val.Kind() {
+		case reflect.String:
+			iface = val.String()
+		case reflect.Int, reflect.Int16, reflect.Int32, reflect.Int64:
+			iface = val.Int()
+		case reflect.Float32, reflect.Float64:
+			iface = val.Float()
+		case reflect.Complex64, reflect.Complex128:
+			iface = val.Complex()
+		case reflect.Bool:
+			iface = val.Bool()
+		default:
+			// Do I dare to eat a peach?
+			rf := reflect.NewAt(val.Type(),
+				unsafe.Pointer(val.UnsafeAddr())).Elem()
+			iface = rf.Interface()
+		}
+	} else {
+		iface = val.Interface()
 	}
-	iface := val.Interface()
 
 	// Check whether this is the zero value for the type.  If
 	// We are serializing to JSON, this is won't be processed.
@@ -256,7 +293,7 @@ func (v Validator) processTag(f reflect.StructField,
 		}
 	}
 
-	// Game on!  Lets validate.
+	// Game on!  Let's validate.
 	if exprTag != "" {
 		bv, err := v.eval.evalBoolExpr(f.Name, iface, exprTag)
 		if err != nil {

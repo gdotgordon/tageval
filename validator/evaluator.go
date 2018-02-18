@@ -111,5 +111,5 @@ func (e *evaluator) evalRegexp(val string, pattern string) (bool, error) {
 		rexp = regexp.MustCompile(pattern)
 		e.regexps[pattern] = rexp
 	}
-	return regexp.Match(pattern, []byte(val))
+	return rexp.Match([]byte(val)), nil
 }
