@@ -34,10 +34,6 @@ const (
 	RegexpTag = "regexp"
 )
 
-var (
-	logger = NewLogger(os.Stderr, Trace)
-)
-
 // The Validator traverses a given interface{} instance to
 // locate our custom tags as well as JSON tags.  It will
 // validate any fields that contain validation expressions,
@@ -92,6 +88,12 @@ var (
 	}
 )
 
+var (
+	logger = NewLogger(os.Stderr, Off)
+
+	timeType = reflect.TypeOf(time.Now())
+)
+
 func init() {
 	mappers = make(map[reflect.Type]TypeMapper)
 	mappers[reflect.TypeOf(time.Now())] = TimeMapper
@@ -121,20 +123,21 @@ func (v *Validator) AddTypeMapping(t reflect.Type, tm TypeMapper) {
 // This function returns the results of all vaidations, or an error if
 // something went wrong.  Note, failed validations do not cause an error
 // to be returned.
-func (v *Validator) Validate(item interface{}) (*Results, error) {
-	res := &Results{}
-	if err := v.traverse(reflect.ValueOf(item), res); err != nil {
-		return nil, err
-	}
-	return res, nil
+func (v *Validator) Validate(item interface{}) (bool, *Results, error) {
+	return v.doValidation(reflect.ValueOf(item))
 }
 
-func (v *Validator) ValidateAddressable(rpv reflect.Value) (*Results, error) {
+func (v *Validator) ValidateAddressable(rvAddr reflect.Value) (bool,
+	*Results, error) {
+	return v.doValidation(rvAddr)
+}
+
+func (v *Validator) doValidation(rv reflect.Value) (bool, *Results, error) {
 	res := &Results{}
-	if err := v.traverse(rpv, res); err != nil {
-		return nil, err
+	if err := v.traverse(rv, res); err != nil {
+		return false, nil, err
 	}
-	return res, nil
+	return len(res.Fail) == 0, res, nil
 }
 
 // The main processing loop is invoked recursively as we
@@ -144,7 +147,8 @@ func (v *Validator) ValidateAddressable(rpv reflect.Value) (*Results, error) {
 func (v Validator) traverse(val reflect.Value, res *Results) error {
 	var err error
 	t := val.Type()
-	if t == reflect.TypeOf(time.Now()) {
+
+	if t == timeType {
 		return nil
 	}
 
@@ -279,7 +283,10 @@ func (v Validator) processTag(f reflect.StructField,
 		case reflect.Bool:
 			iface = val.Bool()
 		default:
-			// Do I dare to eat a peach?
+			// Been beat up and battered 'round
+			// Been sent up, and I've been shot down
+			// You're the best thing that I've ever found
+			// Handle me with care
 			rf := reflect.NewAt(val.Type(),
 				unsafe.Pointer(val.UnsafeAddr())).Elem()
 			iface = rf.Interface()
@@ -288,13 +295,16 @@ func (v Validator) processTag(f reflect.StructField,
 
 	// Check whether this is the zero value for the type.  If
 	// We are serializing to JSON, this is won't be processed.
-	if !v.ignoreJSONTags &&
-		(jtag != "" && strings.HasSuffix(jtag, ",omitempty")) {
-		isZero := reflect.DeepEqual(iface,
-			reflect.Zero(reflect.TypeOf(iface)).Interface())
-		if isZero {
-			logger.Info("Skip zero value for %s, '%v'\n", f.Name, iface)
-			return nil
+	// Note: references (not pointers) to structs are serialized
+	// to JSON in Go even if they are empty.
+	if !v.ignoreJSONTags && f.Type.Kind() != reflect.Struct {
+		if strings.HasSuffix(jtag, ",omitempty") {
+			isZero := reflect.DeepEqual(iface,
+				reflect.Zero(reflect.TypeOf(iface)).Interface())
+			if isZero {
+				logger.Info("Skip zero value for %s, '%v'\n", f.Name, iface)
+				return nil
+			}
 		}
 	}
 
@@ -304,6 +314,7 @@ func (v Validator) processTag(f reflect.StructField,
 		if err != nil {
 			return err
 		}
+
 		r := &Result{
 			Name:  f.Name,
 			Value: iface,

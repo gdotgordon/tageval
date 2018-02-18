@@ -36,8 +36,8 @@ type MyStruct struct {
 	A      int       `json:"a,omitempty" expr:"A>5"`
 	B      time.Time `json:"b"`
 	C      string    `regexp:"^[aeiou]{4}$|hello"`
-	D      []Another
-	E      *byte `expr:"E == 4"`
+	D      []Another `json:"d,omitempty" expr:"D.length == 1"`
+	E      *byte     `expr:"E == 4"`
 	F      chan Another
 	G      Another `expr:"G[\"Fred\"].length > 2 && G[\"Location\"] == \"Oshkosh, WI\""`
 	H      Talker  `json:"talker" expr:"H < 400" regexp:"^[0-9]$"`
@@ -65,20 +65,35 @@ func TestValidationOlio(t *testing.T) {
 		L: "uoiea", M: 3.14, N: time.Now().Add(2 * time.Second),
 		P: []int{1, 2, 3, 4}}
 	v := NewValidator()
-	res, err := v.Validate(ms1)
+	ok, res, err := v.Validate(ms1)
 	if err != nil {
 		t.Fatalf("validation failed with error: %v", err)
 	}
-	res.PrintResults(os.Stdout)
-	if len(res.Succ) != 11 {
-		t.Fatalf("validation expected 11 successes, got %d",
-			len(res.Succ))
+	if ok {
+		t.Fatalf("unexpected success result")
 	}
 
-	if len(res.Fail) != 4 {
-		t.Fatalf("validation expected 4 failures, got %d",
-			len(res.Fail))
+	res.PrintResults(os.Stdout)
+	correlate(t, res.Succ, []string{"C", "D", "Fred", "Location", "G",
+		"Fred", "H", "H", "M", "N", "P", "Q"})
+	correlate(t, res.Fail, []string{"A", "E", "Location", "L"})
+}
+
+func TestZeroValuesOlio(t *testing.T) {
+	ms1 := &MyStruct{}
+	v := NewValidator()
+	ok, res, err := v.Validate(ms1)
+	if err != nil {
+		t.Fatalf("validation failed with error: %v", err)
 	}
+	if ok {
+		t.Fatalf("unexpected success result")
+	}
+
+	res.PrintResults(os.Stdout)
+	correlate(t, res.Succ, []string{"Fred", "Q"})
+	correlate(t, res.Fail,
+		[]string{"C", "G", "Location", "L", "M", "N", "P"})
 }
 
 func TestChannelExprs(t *testing.T) {
@@ -110,16 +125,17 @@ func TestChannelExprs(t *testing.T) {
 			c := i.(chan (interface{}))
 			return fmt.Sprintf("new Object({cap: %d})", cap(c))
 		})
-	res, err := v.Validate(&swc)
+	ok, res, err := v.Validate(&swc)
 	if err != nil {
 		t.Fatalf("validation failed with error: %v", err)
 	}
-
-	fmt.Printf("chan succ = %v\n", res.Succ)
-	fmt.Printf("chan fail = %v\n", res.Fail)
-	if len(res.Succ) != 3 || len(res.Fail) != 0 {
-		t.Fatalf("wrong number of expected successes and failues")
+	if !ok {
+		t.Fatalf("unexpected failure result")
 	}
+
+	res.PrintResults(os.Stdout)
+	correlate(t, res.Succ, []string{"Chan1", "Chan2", "Chan3"})
+	correlate(t, res.Fail, nil)
 }
 
 func TestMap(t *testing.T) {
@@ -141,10 +157,14 @@ func TestMap(t *testing.T) {
 	}
 
 	v := NewValidator()
-	res, err := v.Validate(mt)
+	ok, res, err := v.Validate(mt)
 	if err != nil {
 		t.Fatalf("validation failed with error: %v", err)
 	}
+	if !ok {
+		t.Fatalf("unexpected failure result")
+	}
+
 	fmt.Printf("res: %v\n", res)
 	if len(res.Succ) != 2 || len(res.Fail) != 0 {
 		t.Fatalf("wrong number of expected successes and failues")
@@ -155,14 +175,17 @@ func TestMap(t *testing.T) {
 		M:    map[string]int{"Jane": 5},
 		N:    map[string]Other{"Bob": Other{"Sue", "Anywhere"}},
 	}
-	res, err = v.Validate(mt)
+	ok, res, err = v.Validate(mt)
 	if err != nil {
 		t.Fatalf("validation failed with error: %v", err)
 	}
-	fmt.Printf("res: %v\n", res)
-	if len(res.Succ) != 1 || len(res.Fail) != 1 {
-		t.Fatalf("wrong number of expected successes and failues")
+	if ok {
+		t.Fatalf("unexpected success result")
 	}
+
+	res.PrintResults(os.Stdout)
+	correlate(t, res.Succ, []string{"M"})
+	correlate(t, res.Fail, []string{"N"})
 }
 
 func TestPrivateFields(t *testing.T) {
@@ -190,14 +213,18 @@ func TestPrivateFields(t *testing.T) {
 	rv := reflect.ValueOf(&p).Elem()
 	v := NewValidator()
 	v.ignoreJSONTags = true
-	res, err := v.ValidateAddressable(rv)
+	ok, res, err := v.ValidateAddressable(rv)
 	if err != nil {
 		t.Fatalf("validation failed with error: %v", err)
 	}
-	fmt.Println(res)
-	if len(res.Succ) != 7 || len(res.Fail) != 0 {
-		t.Fatalf("wrong number of expected successes and failues")
+	if !ok {
+		t.Fatalf("unexpected failure result")
 	}
+
+	res.PrintResults(os.Stdout)
+	correlate(t, res.Succ,
+		[]string{"name", "age", "things", "other", "iptr", "blah", "blah"})
+	correlate(t, res.Fail, nil)
 }
 
 func TestEvaluation(t *testing.T) {
@@ -235,5 +262,16 @@ func TestEvaluation(t *testing.T) {
 	}
 	if !res {
 		t.Fatalf("Unexpected false resut for: '%s'", expr)
+	}
+}
+
+func correlate(t *testing.T, results []*Result, expected []string) {
+	if len(results) != len(expected) {
+		t.Fatalf("Expected %d results, got %d", len(expected), len(results))
+	}
+	for i, v := range results {
+		if v.Name != expected[i] {
+			t.Fatalf("Expected result %d to be for '%s'\n", i, expected[i])
+		}
 	}
 }
