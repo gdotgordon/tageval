@@ -10,7 +10,7 @@ As mentioned, additional Go struct field tags are introduced, `eval` and `regexp
 
 For normal use, any item (`interface{}`) or pointer to such an item is passed in to be traversed and evaluated.
 
-However, if you want to use it as a standalone tool and need to evaluate private fields that are more complex than built-in data types, there is a separate function to call for this.  It requires an _addressable_ reflection value to be passed in, as the only way to handle this scenario is using the _unsafe_ package.  Only use this mode if you really need it - no data is modified by the code, but in general, I wish Go had allowed a read-only inspection mode for private fields.
+However, if you want to use it as a standalone tool outside JSON, and need to evaluate private fields that are more complex than built-in data types, there is a separate function to call for this.  It requires an _addressable_ reflection value to be passed in, as the only way to handle this scenario is using the _unsafe_ package.  Only use this mode if you really need it - no data is modified by the code, but in general, I wish Go had allowed a read-only inspection mode for private fields.
 
 The following example is mostly to show how the tags look.  Validation for virtually every Go type is supported, including channels, slices, arrays, etc., even if they would not be serialized by the Go JSON serializer.  For some types, such as channels, the user must define a custom type-mapper, but this works seamlessly with the API.
 
