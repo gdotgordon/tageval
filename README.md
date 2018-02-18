@@ -14,7 +14,8 @@ However, if you want to use it as a standalone tool outside JSON, and need to ev
 
 The following example is mostly to show how the tags look.  Validation for virtually every Go type is supported, including channels, slices, arrays, etc., even if they would not be serialized by the Go JSON serializer.  For some types, such as channels, the user must define a custom type-mapper, but this works seamlessly with the API.
 
-```type MyStruct struct {
+```
+type MyStruct struct {
   FirstName string `json:"my_name" expr:"MyName.length<10" regexp:"^\p{L}.*$`
   LastName string  `json:"last_name" expr:"LastName.length<10"`
   City string      `expr:"City.length<10"`
@@ -34,7 +35,7 @@ Here is a very simple example:
 import "github.com/GGordonCode/tageval"
 
 type MyStruct struct {
-	A      int       `json:"a,omitempty" expr:"A>5"`
+	A      int       `json:"a,omitempty" expr:"A > 5"`
 }
 
 func main() {
