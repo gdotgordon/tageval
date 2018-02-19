@@ -5,7 +5,7 @@
 // using the "otto" embedded JavaScript engine, and regexp evaluations
 // where this can be done (strings or any Stringer objects).  A list
 // of all failed and optionally successful validations is returned.
-package validator
+package tageval
 
 import (
 	"fmt"
