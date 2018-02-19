@@ -1,4 +1,4 @@
-// Package validator implements per-field validation for struct
+// Package tageval implements per-field validation for struct
 // members, by adding custom tags containing expressions.  There
 // are two types of validation supported: boolean JavaScript
 // expressions for the current field (or contained structure members)
@@ -34,14 +34,22 @@ const (
 	RegexpTag = "regexp"
 )
 
+// Options supported
+const (
+	// ProcessAsJSON selects whether the tag processor should
+	// obey JSON semantics when processng tags.  The value for
+	// this option is of type bool, with the default being 'true'.
+	ProcessAsJSON = "ProcessAsJson"
+)
+
 // The Validator traverses a given interface{} instance to
 // locate our custom tags as well as JSON tags.  It will
 // validate any fields that contain validation expressions,
 // either JavaScript expressions or regexps, and report back
 // The results of the validation.
 type Validator struct {
-	ignoreJSONTags bool
-	eval           *evaluator
+	processAsJSON bool
+	eval          *evaluator
 }
 
 // A Result captures the data from a single evaluation.  The validation
@@ -58,6 +66,12 @@ type Result struct {
 type Results struct {
 	Succ []*Result
 	Fail []*Result
+}
+
+// Option defines items for passing Validator configuration options.
+type Option struct {
+	Name  string
+	Value interface{}
 }
 
 // TypeMapper delcares the signature of the function to add a
@@ -101,12 +115,23 @@ func init() {
 
 // NewValidator returns a new item capable of traversing and
 // inspecting any item (interface{}).
-func NewValidator() *Validator {
+func NewValidator(options ...Option) *Validator {
 	eval := newEvaluator()
+	procJSON := true
+	for _, opt := range options {
+		switch opt.Name {
+		case ProcessAsJSON:
+			val, ok := opt.Value.(bool)
+			if !ok {
+				panic("bool value expected for Option" + ProcessAsJSON)
+			}
+			procJSON = val
+		}
+	}
 	for k, f := range mappers {
 		eval.addTypeMapping(k, f)
 	}
-	return &Validator{eval: eval}
+	return &Validator{processAsJSON: procJSON, eval: eval}
 }
 
 // AddTypeMapping allows the user to declare and add their
@@ -120,13 +145,27 @@ func (v *Validator) AddTypeMapping(t reflect.Type, tm TypeMapper) {
 // Validate a Go item (or pointer) of any kind.  If the item is not
 // a struct, or does not contain or reference a struct anywhere, there
 // will be nothing to evaluate, as that is where all the tags live.
-// This function returns the results of all vaidations, or an error if
+// This function returns the results of all validations, or an error if
 // something went wrong.  Note, failed validations do not cause an error
 // to be returned.
 func (v *Validator) Validate(item interface{}) (bool, *Results, error) {
 	return v.doValidation(reflect.ValueOf(item))
 }
 
+// ValidateAddressable is a variant of "Validate()" that accepts a
+// Go reflect.Value of any kind that is addressable.  This variant
+// should only be used if it is desired to perform expression evaluation
+// on private fields that are not of primitive type.  The following
+// creates such an addressable item:
+//	p := struct{foo: "bar"}
+//	rv := reflect.ValueOf(&p).Elem()
+//  ok, _, err := v.Validate(rv)
+//
+//If the item is not a struct, or does not contain or reference a
+// struct anywhere, there will be nothing to evaluate, as that is
+// where all the tags live.  This function returns the results of all
+// validations, or an error if something went wrong.  Note, failed
+// validations do not cause an error to be returned.
 func (v *Validator) ValidateAddressable(rvAddr reflect.Value) (bool,
 	*Results, error) {
 	return v.doValidation(rvAddr)
@@ -203,7 +242,7 @@ func (v Validator) traverse(val reflect.Value, res *Results) error {
 			// If following JSON serialization rules, skip
 			// any private fields.
 			handleTags := true
-			if !v.ignoreJSONTags {
+			if v.processAsJSON {
 				var first rune
 				for _, c := range f.Name {
 					first = c
@@ -244,7 +283,7 @@ func (v Validator) processTag(f reflect.StructField,
 	var jtag string
 	if f.Tag != "" {
 		jtag, _ = f.Tag.Lookup("json")
-		if !v.ignoreJSONTags && jtag == "-" {
+		if v.processAsJSON && jtag == "-" {
 			// This one won't get serialized to JSON, so skip.
 			return nil
 		}
@@ -297,7 +336,7 @@ func (v Validator) processTag(f reflect.StructField,
 	// We are serializing to JSON, this is won't be processed.
 	// Note: references (not pointers) to structs are serialized
 	// to JSON in Go even if they are empty.
-	if !v.ignoreJSONTags && f.Type.Kind() != reflect.Struct {
+	if v.processAsJSON && f.Type.Kind() != reflect.Struct {
 		if strings.HasSuffix(jtag, ",omitempty") {
 			isZero := reflect.DeepEqual(iface,
 				reflect.Zero(reflect.TypeOf(iface)).Interface())

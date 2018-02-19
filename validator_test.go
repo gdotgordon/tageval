@@ -114,7 +114,7 @@ func TestChannelExprs(t *testing.T) {
 	// In this case, we'll define functions that allows us to check
 	// the channel capacity by creating a js Object with one field.
 	v := NewValidator()
-	v.ignoreJSONTags = true
+	v.processAsJSON = false
 	v.AddTypeMapping(reflect.TypeOf(swc.Chan1),
 		func(i interface{}) string {
 			c := i.(chan (int))
@@ -211,8 +211,7 @@ func TestPrivateFields(t *testing.T) {
 	ival := 75
 	p := privy{"Joe", 50, []int{3, 4}, []myob{{300, 145}}, &ival, noyb{"ick"}, nil}
 	rv := reflect.ValueOf(&p).Elem()
-	v := NewValidator()
-	v.ignoreJSONTags = true
+	v := NewValidator(Option{ProcessAsJSON, false})
 	ok, res, err := v.ValidateAddressable(rv)
 	if err != nil {
 		t.Fatalf("validation failed with error: %v", err)
