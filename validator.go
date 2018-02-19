@@ -3,8 +3,9 @@
 // are two types of validation supported: boolean JavaScript
 // expressions for the current field (or contained structure members)
 // using the "otto" embedded JavaScript engine, and regexp evaluations
-// where this can be done (strings or any Stringer objects).  A list
-// of all failed and optionally successful validations is returned.
+// for strings, Stringers, int types, and using the defualt print format
+// otherwise.  A detailed list containing the results of the evaluation
+// is also returned.
 package tageval
 
 import (
@@ -22,24 +23,29 @@ import (
 // Struct tag names for the types of validation that can be done.
 // Note a JSON tag may or may not be present.
 // Example struct members
-// LastName string `json:"last_name" expr:"LastName.length<10"`
-// LastName string `expr:"LastName.length<10"`
+//   LastName string `json:"last_name" expr:"LastName.length<10"`
+//   LastName string `expr:"LastName.length<10"`
 //
-// State string `json:"state" regexp:"[A-Z]{2}"`
-// State string `regexp:"[A-Z]{2}"`
+//   State string `json:"state" regexp:"[A-Z]{2}"`
+//   State string `regexp:"[A-Z]{2}"`
 //
-// MyName string `json:"my_name" expr:"MyName.length<10" regexp:"^\p{L}.*$`
+//   MyName string `json:"my_name" expr:"MyName.length<10" regexp:"^\p{L}.*$`
 const (
 	ExprTag   = "expr"
 	RegexpTag = "regexp"
 )
 
-// Options supported
+// Options supported and passed to "NewValidator()"".
 const (
 	// ProcessAsJSON selects whether the tag processor should
 	// obey JSON semantics when processng tags.  The value for
 	// this option is of type bool, with the default being 'true'.
 	ProcessAsJSON = "ProcessAsJson"
+
+	// ShowSuccesses also incudes successful validations in the
+	// list returned from any Vaildate() call.  The default is
+	// "false", meaning only failures are shown.
+	ShowSuccesses = "ShowSuccesses"
 )
 
 // The Validator traverses a given interface{} instance to
@@ -49,6 +55,7 @@ const (
 // The results of the validation.
 type Validator struct {
 	processAsJSON bool
+	showSuccesses bool
 	eval          *evaluator
 }
 
@@ -58,14 +65,9 @@ type Validator struct {
 type Result struct {
 	Name  string
 	Value interface{}
+	Type  reflect.Type
 	Expr  string
-}
-
-// Results are the entirety of a single validation run.  A Results item
-// contains a list of successful validaions, and a list of failed ones.
-type Results struct {
-	Succ []*Result
-	Fail []*Result
+	Valid bool
 }
 
 // Option defines items for passing Validator configuration options.
@@ -117,21 +119,36 @@ func init() {
 // inspecting any item (interface{}).
 func NewValidator(options ...Option) *Validator {
 	eval := newEvaluator()
-	procJSON := true
+	ret := &Validator{
+		processAsJSON: true,
+		showSuccesses: false,
+		eval:          eval,
+	}
+
 	for _, opt := range options {
 		switch opt.Name {
 		case ProcessAsJSON:
 			val, ok := opt.Value.(bool)
 			if !ok {
-				panic("bool value expected for Option" + ProcessAsJSON)
+				panic(fmt.Errorf("bool value expected for Option %s",
+					ProcessAsJSON))
 			}
-			procJSON = val
+			ret.processAsJSON = val
+		case ShowSuccesses:
+			val, ok := opt.Value.(bool)
+			if !ok {
+				panic(fmt.Errorf("bool value expected for Option %s",
+					ShowSuccesses))
+			}
+			ret.showSuccesses = val
+		default:
+			panic(fmt.Errorf("unknown option: %s", opt.Name))
 		}
 	}
 	for k, f := range mappers {
 		eval.addTypeMapping(k, f)
 	}
-	return &Validator{processAsJSON: procJSON, eval: eval}
+	return ret
 }
 
 // AddTypeMapping allows the user to declare and add their
@@ -148,7 +165,7 @@ func (v *Validator) AddTypeMapping(t reflect.Type, tm TypeMapper) {
 // This function returns the results of all validations, or an error if
 // something went wrong.  Note, failed validations do not cause an error
 // to be returned.
-func (v *Validator) Validate(item interface{}) (bool, *Results, error) {
+func (v *Validator) Validate(item interface{}) (bool, []Result, error) {
 	return v.doValidation(reflect.ValueOf(item))
 }
 
@@ -167,23 +184,30 @@ func (v *Validator) Validate(item interface{}) (bool, *Results, error) {
 // validations, or an error if something went wrong.  Note, failed
 // validations do not cause an error to be returned.
 func (v *Validator) ValidateAddressable(rvAddr reflect.Value) (bool,
-	*Results, error) {
+	[]Result, error) {
 	return v.doValidation(rvAddr)
 }
 
-func (v *Validator) doValidation(rv reflect.Value) (bool, *Results, error) {
-	res := &Results{}
-	if err := v.traverse(rv, res); err != nil {
+func (v *Validator) doValidation(rv reflect.Value) (bool, []Result, error) {
+	var res []Result
+	if err := v.traverse(rv, &res); err != nil {
 		return false, nil, err
 	}
-	return len(res.Fail) == 0, res, nil
+	ok := true
+	for _, rslt := range res {
+		if !rslt.Valid {
+			ok = false
+			break
+		}
+	}
+	return ok, res, nil
 }
 
 // The main processing loop is invoked recursively as we
 // traverse the value, eventually landing on a struct type,
 // which is where the tags are found.  Types such as built-ins
 // and channels require no further processing, so no action happens.
-func (v Validator) traverse(val reflect.Value, res *Results) error {
+func (v *Validator) traverse(val reflect.Value, res *[]Result) error {
 	var err error
 	t := val.Type()
 
@@ -270,8 +294,8 @@ func (v Validator) traverse(val reflect.Value, res *Results) error {
 // Check the tags to see if there is something we need to validate.
 // Validation can also only occur if our custom tags are present,
 // although the json tag need not be present.
-func (v Validator) processTag(f reflect.StructField,
-	val reflect.Value, res *Results) error {
+func (v *Validator) processTag(f reflect.StructField,
+	val reflect.Value, res *[]Result) error {
 
 	// Our expression eval tags.
 	exprTag := f.Tag.Get("expr")
@@ -348,45 +372,46 @@ func (v Validator) processTag(f reflect.StructField,
 	}
 
 	// Game on!  Let's validate.
+	var bv bool
+	var err error
 	if exprTag != "" {
-		bv, err := v.eval.evalBoolExpr(f.Name, iface, exprTag)
+		bv, err = v.eval.evalBoolExpr(f.Name, iface, exprTag)
 		if err != nil {
 			return err
 		}
 
-		r := &Result{
-			Name:  f.Name,
-			Value: iface,
-			Expr:  exprTag,
+		if !bv || v.showSuccesses {
+			r := Result{
+				Name:  f.Name,
+				Value: iface,
+				Type:  f.Type,
+				Expr:  exprTag,
+				Valid: bv,
+			}
+			*res = append(*res, r)
 		}
-		if bv {
-			res.Succ = append(res.Succ, r)
-		} else {
-			res.Fail = append(res.Fail, r)
-		}
-		logger.Trace("result for '%s', '%s', value: '%v': %t\n",
-			exprTag, f.Name, iface, bv)
 	}
 
 	if regexpTag != "" {
 		str := v.iToStr(iface)
-		bv, err := v.eval.evalRegexp(str, regexpTag)
+		bv, err = v.eval.evalRegexp(str, regexpTag)
 		if err != nil {
 			return err
 		}
-		r := &Result{
-			Name:  f.Name,
-			Value: iface,
-			Expr:  regexpTag,
+		if !bv || v.showSuccesses {
+			r := Result{
+				Name:  f.Name,
+				Value: iface,
+				Type:  f.Type,
+				Expr:  regexpTag,
+				Valid: bv,
+			}
+			*res = append(*res, r)
 		}
-		if bv {
-			res.Succ = append(res.Succ, r)
-		} else {
-			res.Fail = append(res.Fail, r)
-		}
-		logger.Trace("result for '%s', '%s', value: '%v': %t\n",
-			regexpTag, f.Name, iface, bv)
 	}
+
+	logger.Trace("result for '%s', '%s', value: '%v': %t\n",
+		regexpTag, f.Name, iface, bv)
 	return nil
 }
 
@@ -437,24 +462,20 @@ func (res *Result) String() string {
 	default:
 		tstr = tn.Name()
 	}
-	return fmt.Sprintf("'%s': expr: '%s' item: '%+v' (type: %v)",
-		res.Name, res.Expr, res.Value, tstr)
+
+	valid := "ok"
+	if !res.Valid {
+		valid = "failed"
+	}
+	return fmt.Sprintf("'%s' (type: %v) item: '%+v', expr: '%s'  : %s",
+		res.Name, tstr, res.Value, res.Expr, valid)
 }
 
 // PrintResults shows the lists of successful and unsuccessful
 // validations.
-func (r *Results) PrintResults(w io.Writer) {
+func PrintResults(w io.Writer, res []Result) {
 	fmt.Fprintln(w, "Results:")
-	for i := 0; i < len(r.Succ); i++ {
-		if i == 0 {
-			fmt.Fprintln(w, "Successes:")
-		}
-		fmt.Fprintln(w, r.Succ[i])
-	}
-	for i := 0; i < len(r.Fail); i++ {
-		if i == 0 {
-			fmt.Fprintln(w, "Failures:")
-		}
-		fmt.Fprintln(w, r.Fail[i])
+	for i := 0; i < len(res); i++ {
+		fmt.Fprintln(w, res[i].String())
 	}
 }

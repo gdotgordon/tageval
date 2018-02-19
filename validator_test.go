@@ -9,13 +9,18 @@ import (
 	"time"
 )
 
+type checker struct {
+	name  string
+	valid bool
+}
+
 type Another struct {
 	Fred     string `json:"fred" expr:"Fred.length<10"`
 	Location string `json:"location" expr:"Location.indexOf('TX') != -1"`
 }
 
 func (a Another) String() string {
-	return "hello"
+	return fmt.Sprintf("Fred: '%s', Location: '%s'", a.Fred, a.Location)
 }
 
 type Talker interface {
@@ -64,7 +69,7 @@ func TestValidationOlio(t *testing.T) {
 		H: TalkingInt(7), I: map[string]int{"green": 12, "blue": 93}, j: "Pete",
 		L: "uoiea", M: 3.14, N: time.Now().Add(2 * time.Second),
 		P: []int{1, 2, 3, 4}}
-	v := NewValidator()
+	v := NewValidator(Option{ShowSuccesses, true})
 	ok, res, err := v.Validate(ms1)
 	if err != nil {
 		t.Fatalf("validation failed with error: %v", err)
@@ -73,15 +78,33 @@ func TestValidationOlio(t *testing.T) {
 		t.Fatalf("unexpected success result")
 	}
 
-	res.PrintResults(os.Stdout)
-	correlate(t, res.Succ, []string{"C", "D", "Fred", "Location", "G",
-		"Fred", "H", "H", "M", "N", "P", "Q"})
-	correlate(t, res.Fail, []string{"A", "E", "Location", "L"})
+	PrintResults(os.Stdout, res)
+	correlate(t, res, []checker{
+		{"A", false},
+		{"C", true},
+		{"D", true},
+		{"Fred", true},
+		{"Location", true},
+		{"E", false},
+		{"G", true},
+		{"Fred", true},
+		{"Location", false},
+		{"H", true},
+		{"H", true},
+		{"L", false},
+		{"M", true},
+		{"N", true},
+		{"P", true},
+		{"Q", true},
+	})
+	//correlate(t, res.Succ, []string{"C", "D", "Fred", "Location", "G",
+	//	"Fred", "H", "H", "M", "N", "P", "Q"})
+	//correlate(t, res.Fail, []string{"A", "E", "Location", "L"})
 }
 
 func TestZeroValuesOlio(t *testing.T) {
 	ms1 := &MyStruct{}
-	v := NewValidator()
+	v := NewValidator(Option{ShowSuccesses, true})
 	ok, res, err := v.Validate(ms1)
 	if err != nil {
 		t.Fatalf("validation failed with error: %v", err)
@@ -90,10 +113,18 @@ func TestZeroValuesOlio(t *testing.T) {
 		t.Fatalf("unexpected success result")
 	}
 
-	res.PrintResults(os.Stdout)
-	correlate(t, res.Succ, []string{"Fred", "Q"})
-	correlate(t, res.Fail,
-		[]string{"C", "G", "Location", "L", "M", "N", "P"})
+	PrintResults(os.Stdout, res)
+	correlate(t, res, []checker{
+		{"C", false},
+		{"G", false},
+		{"Fred", true},
+		{"Location", false},
+		{"L", false},
+		{"M", false},
+		{"N", false},
+		{"P", false},
+		{"Q", true},
+	})
 }
 
 func TestChannelExprs(t *testing.T) {
@@ -113,7 +144,7 @@ func TestChannelExprs(t *testing.T) {
 	// we need to create custom mapping s for each channel type.
 	// In this case, we'll define functions that allows us to check
 	// the channel capacity by creating a js Object with one field.
-	v := NewValidator()
+	v := NewValidator(Option{ShowSuccesses, true})
 	v.processAsJSON = false
 	v.AddTypeMapping(reflect.TypeOf(swc.Chan1),
 		func(i interface{}) string {
@@ -133,9 +164,10 @@ func TestChannelExprs(t *testing.T) {
 		t.Fatalf("unexpected failure result")
 	}
 
-	res.PrintResults(os.Stdout)
-	correlate(t, res.Succ, []string{"Chan1", "Chan2", "Chan3"})
-	correlate(t, res.Fail, nil)
+	PrintResults(os.Stdout, res)
+	expected := []checker{checker{"Chan1", true}, checker{"Chan2", true},
+		checker{"Chan3", true}}
+	correlate(t, res, expected)
 }
 
 func TestMap(t *testing.T) {
@@ -156,7 +188,7 @@ func TestMap(t *testing.T) {
 		N:    map[string]Other{"Bob": Other{"Sue", "Somewhere"}},
 	}
 
-	v := NewValidator()
+	v := NewValidator(Option{ShowSuccesses, true})
 	ok, res, err := v.Validate(mt)
 	if err != nil {
 		t.Fatalf("validation failed with error: %v", err)
@@ -165,10 +197,8 @@ func TestMap(t *testing.T) {
 		t.Fatalf("unexpected failure result")
 	}
 
-	fmt.Printf("res: %v\n", res)
-	if len(res.Succ) != 2 || len(res.Fail) != 0 {
-		t.Fatalf("wrong number of expected successes and failues")
-	}
+	expected := []checker{checker{"M", true}, checker{"N", true}}
+	correlate(t, res, expected)
 
 	mt = &MapTest{
 		Name: "Mary",
@@ -183,9 +213,9 @@ func TestMap(t *testing.T) {
 		t.Fatalf("unexpected success result")
 	}
 
-	res.PrintResults(os.Stdout)
-	correlate(t, res.Succ, []string{"M"})
-	correlate(t, res.Fail, []string{"N"})
+	PrintResults(os.Stdout, res)
+	expected = []checker{checker{"M", true}, checker{"N", false}}
+	correlate(t, res, expected)
 }
 
 func TestPrivateFields(t *testing.T) {
@@ -211,7 +241,8 @@ func TestPrivateFields(t *testing.T) {
 	ival := 75
 	p := privy{"Joe", 50, []int{3, 4}, []myob{{300, 145}}, &ival, noyb{"ick"}, nil}
 	rv := reflect.ValueOf(&p).Elem()
-	v := NewValidator(Option{ProcessAsJSON, false})
+	v := NewValidator(Option{ProcessAsJSON, false},
+		Option{ShowSuccesses, true})
 	ok, res, err := v.ValidateAddressable(rv)
 	if err != nil {
 		t.Fatalf("validation failed with error: %v", err)
@@ -220,10 +251,16 @@ func TestPrivateFields(t *testing.T) {
 		t.Fatalf("unexpected failure result")
 	}
 
-	res.PrintResults(os.Stdout)
-	correlate(t, res.Succ,
-		[]string{"name", "age", "things", "other", "iptr", "blah", "blah"})
-	correlate(t, res.Fail, nil)
+	PrintResults(os.Stdout, res)
+	correlate(t, res, []checker{
+		{"name", true},
+		{"age", true},
+		{"things", true},
+		{"other", true},
+		{"iptr", true},
+		{"blah", true},
+		{"blah", true},
+	})
 }
 
 func TestEvaluation(t *testing.T) {
@@ -264,13 +301,13 @@ func TestEvaluation(t *testing.T) {
 	}
 }
 
-func correlate(t *testing.T, results []*Result, expected []string) {
+func correlate(t *testing.T, results []Result, expected []checker) {
 	if len(results) != len(expected) {
 		t.Fatalf("Expected %d results, got %d", len(expected), len(results))
 	}
 	for i, v := range results {
-		if v.Name != expected[i] {
-			t.Fatalf("Expected result %d to be for '%s'\n", i, expected[i])
+		if v.Name != expected[i].name || v.Valid != expected[i].valid {
+			t.Fatalf("Expected result %d to be for '%+v'\n", i, expected[i])
 		}
 	}
 }
