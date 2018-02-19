@@ -75,7 +75,7 @@ This one fails as Vals[1] is 7, which is not > 10, and here is the `Result` item
 With all the information in one place, the task of finding the problem should be simpler.
 
 ### Regexp
-The pattern matching validation uses the `regexp` package in Go to see whether the string matches.  It does not require a complete match, and if you require that, start the regexp string with a '^' and terminate it with a '$'.  Getting the value to validate against the regexp is obvious for strings and objects implmenting `fmt.Stringer()`, as well as all the `int` and `uint` types.  The type `bool` maps to "true" or "false", and all the other types use the default format (`%v`) from the fmt package.
+The pattern matching validation uses the `regexp` package in Go to see whether the string matches.  It does not require a complete match, and if you require that, start the regexp string with a '^' and terminate it with a '$'.  Getting the value to validate against the regexp is obvious for strings and objects implementing `fmt.Stringer()`, as well as all the `int` and `uint` types.  The type `bool` maps to "true" or "false", and all the other types use the default format (`%v`) from the fmt package.
 
 Here's an example assuming the rest of the program above is unchanged:
 
@@ -110,8 +110,8 @@ type Option struct {
 ```
 
 The options currently supported are:
-* ProcessAsJSON - a boolean which says to obey the JSON rules, as explained above, with default of true.  You'd set this to failse if you want to validate every field, regardless of whether it would be serialized to JSON.
-* ShowSuccesses - by default, only failures are returned in the `[]Result`.  Setting this to `true` shows successes and faulures.
+* ProcessAsJSON - a `bool` which says to obey the JSON rules, as explained above, with default of true.  You'd set this to false if you want to validate every field, regardless of whether it would be serialized to JSON.
+* ShowSuccesses - by default, only failures are returned in the `[]Result`.  Setting this to `true` shows successes and failures.
 
 ## More Detailed Use Cases
 We'll add more examples here, but for now, see the unit tests for some more advanced examples.
