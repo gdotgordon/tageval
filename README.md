@@ -58,6 +58,14 @@ In general, an expression uses the Go field's name (here "A") as the name of the
 
 Back to the sample above, the test shown here leads to an `ok` return value of `false`, meaning the validation failed, as the value of A is not greater than 5.  The second parameter, `res` is an object of type `Results`, which breaks down in detail the results of failures (or optionally both successes and failures) from the `Validate()` call.  This is extremely helpful for figuring out what went wrong, especially with multiple expressions, but may be ignored by assigning it to `_`.  Again, the `error` type is reserved for an execution error in the Validation, and not a validation failure.
 
+One final note: for simple relational expressions such as `A > 5`, these may be abbreviated as `> 5`.  This works for experssions beginning with '<', '<=', '>', '>=', '==' and '!='.  This allows for a change of the field name without having to edit the expression, among other advantages.  So the example above could have been written as:
+
+```
+type MyStruct struct {
+    A      int       `json:"a,omitempty" expr:"> 5"`
+}
+```
+
 Now let's look at a slightly more complex example, a slice.  Assume the code from above, but change the struct definition and instance to be as follows:
 
 ```
