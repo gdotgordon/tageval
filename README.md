@@ -41,7 +41,11 @@ type MyStruct struct {
 
 func main() {
     ms1 := &MyStruct{4}
-    v := tageval.NewValidator()
+    v, err := tageval.NewValidator()
+    if err != nil {
+       fmt.Printf("initialization failed with: %v", err)
+       os.Exit(1)
+    }
     ok, res, err := v.Validate(ms1)
     if err != nil {
         fmt.Printf(os.Stderr, "validation failed with error: %v", err)
@@ -99,7 +103,11 @@ Spec	SpecialInt `json:"spec" regexp:"^.*: [-]?[0-9]+$"`
 }
 ...
 ms1 := &SpecialStruct{-56}
-v := tageval.NewValidator(tageval.Option{ShowSuccesses, true})
+v, rrr := tageval.NewValidator(tageval.Option{ShowSuccesses, true})
+if err != nil {
+    fmt.Printf("initialization failed with: %v", err)
+    os.Exit(1)
+}
 ok, res, err := v.Validate(ms1)
 ...
 ```
