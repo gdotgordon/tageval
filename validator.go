@@ -391,7 +391,14 @@ func (v *Validator) processTag(f reflect.StructField,
 		expr := exprTag
 		ts := strings.TrimSpace(expr)
 		switch ts[0] {
-		case '<', '>', '=', '!':
+		case '!':
+			// '!' could be a simple negation, so check "!=".
+			if len(ts) < 2 || ts[1] != '=' {
+				break
+			}
+			fallthrough
+		case '<', '>', '=':
+			// Must be start of right-hand side of expr or syntax error.
 			var buffer bytes.Buffer
 			buffer.WriteString(f.Name)
 			buffer.WriteString(" ")
