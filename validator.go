@@ -125,7 +125,7 @@ func init() {
 
 // NewValidator returns a new item capable of traversing and
 // inspecting any item (interface{}).
-func NewValidator(options ...Option) *Validator {
+func NewValidator(options ...Option) (*Validator, error) {
 	eval := newEvaluator()
 	ret := &Validator{
 		processAsJSON: true,
@@ -138,25 +138,27 @@ func NewValidator(options ...Option) *Validator {
 		case ProcessAsJSON:
 			val, ok := opt.Value.(bool)
 			if !ok {
-				panic(fmt.Errorf("bool value expected for Option %s",
-					ProcessAsJSON))
+				return nil,
+					fmt.Errorf("bool value expected for Option %s",
+						ProcessAsJSON)
 			}
 			ret.processAsJSON = val
 		case ShowSuccesses:
 			val, ok := opt.Value.(bool)
 			if !ok {
-				panic(fmt.Errorf("bool value expected for Option %s",
-					ShowSuccesses))
+				return nil,
+					fmt.Errorf("bool value expected for Option %s",
+						ShowSuccesses)
 			}
 			ret.showSuccesses = val
 		default:
-			panic(fmt.Errorf("unknown option: %s", opt.Name))
+			return nil, fmt.Errorf("unknown option: %s", opt.Name)
 		}
 	}
 	for k, f := range mappers {
 		eval.addTypeMapping(k, f)
 	}
-	return ret
+	return ret, nil
 }
 
 // AddTypeMapping allows the user to declare and add their

@@ -69,7 +69,11 @@ func TestValidationOlio(t *testing.T) {
 		H: TalkingInt(7), I: map[string]int{"green": 12, "blue": 93}, j: "Pete",
 		L: "uoiea", M: 3.14, N: time.Now().Add(2 * time.Second),
 		P: []int{1, 2, 3, 4}}
-	v := NewValidator(Option{ShowSuccesses, true})
+	v, err := NewValidator(Option{ShowSuccesses, true})
+	if err != nil {
+		t.Fatalf("error creating validator: %v", err)
+	}
+
 	ok, res, err := v.Validate(ms1)
 	if err != nil {
 		t.Fatalf("validation failed with error: %v", err)
@@ -101,7 +105,10 @@ func TestValidationOlio(t *testing.T) {
 
 func TestZeroValuesOlio(t *testing.T) {
 	ms1 := &MyStruct{}
-	v := NewValidator(Option{ShowSuccesses, true})
+	v, err := NewValidator(Option{ShowSuccesses, true})
+	if err != nil {
+		t.Fatalf("error creating validator: %v", err)
+	}
 	ok, res, err := v.Validate(ms1)
 	if err != nil {
 		t.Fatalf("validation failed with error: %v", err)
@@ -141,7 +148,10 @@ func TestChannelExprs(t *testing.T) {
 	// we need to create custom mapping s for each channel type.
 	// In this case, we'll define functions that allows us to check
 	// the channel capacity by creating a js Object with one field.
-	v := NewValidator(Option{ShowSuccesses, true})
+	v, err := NewValidator(Option{ShowSuccesses, true})
+	if err != nil {
+		t.Fatalf("error creating validator: %v", err)
+	}
 	v.processAsJSON = false
 	v.AddTypeMapping(reflect.TypeOf(swc.Chan1),
 		func(i interface{}) string {
@@ -185,7 +195,10 @@ func TestMap(t *testing.T) {
 		N:    map[string]Other{"Bob": Other{"Sue", "Somewhere"}},
 	}
 
-	v := NewValidator(Option{ShowSuccesses, true})
+	v, err := NewValidator(Option{ShowSuccesses, true})
+	if err != nil {
+		t.Fatalf("error creating validator: %v", err)
+	}
 	ok, res, err := v.Validate(mt)
 	if err != nil {
 		t.Fatalf("validation failed with error: %v", err)
@@ -238,8 +251,11 @@ func TestPrivateFields(t *testing.T) {
 	ival := 75
 	p := privy{"Joe", 50, []int{3, 4}, []myob{{300, 145}}, &ival, noyb{"ick"}, nil}
 	rv := reflect.ValueOf(&p).Elem()
-	v := NewValidator(Option{ProcessAsJSON, false},
+	v, err := NewValidator(Option{ProcessAsJSON, false},
 		Option{ShowSuccesses, true})
+	if err != nil {
+		t.Fatalf("error creating validator: %v", err)
+	}
 	ok, res, err := v.ValidateAddressable(rv)
 	if err != nil {
 		t.Fatalf("validation failed with error: %v", err)
@@ -258,6 +274,23 @@ func TestPrivateFields(t *testing.T) {
 		{"blah", true},
 		{"blah", true},
 	})
+}
+
+func TestNewOptions(t *testing.T) {
+	_, err := NewValidator(Option{ShowSuccesses, 3})
+	if err == nil {
+		t.Fatalf("expected error not received")
+	}
+
+	_, err = NewValidator(Option{ProcessAsJSON, "hi"})
+	if err == nil {
+		t.Fatalf("expected error not received")
+	}
+
+	_, err = NewValidator(Option{"invalid option", true})
+	if err == nil {
+		t.Fatalf("expected error not received")
+	}
 }
 
 func TestEvaluation(t *testing.T) {
