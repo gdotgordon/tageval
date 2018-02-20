@@ -88,29 +88,27 @@ func NewLogger(writer io.Writer, level LogLevel) *Logger {
 // Trace logs messages at or above level Trace.
 func (lg *Logger) Trace(fmtmsg string, a ...interface{}) {
 	if lg.Level >= Trace {
-		// Note we need to go down to frame level 3
-		// as level 2 leaves us here in the logger.
-		lg.trace.Output(3, fmt.Sprintf(fmtmsg, a...))
+		lg.trace.Output(2, fmt.Sprintf(fmtmsg, a...))
 	}
 }
 
 // Info logs messages at or above level Info.
 func (lg *Logger) Info(fmtmsg string, a ...interface{}) {
 	if lg.Level >= Info {
-		lg.info.Output(3, fmt.Sprintf(fmtmsg, a...))
+		lg.info.Output(2, fmt.Sprintf(fmtmsg, a...))
 	}
 }
 
 // Warning logs messages at or above level Warning.
 func (lg *Logger) Warning(fmtmsg string, a ...interface{}) {
 	if lg.Level >= Warning {
-		lg.warn.Output(3, fmt.Sprintf(fmtmsg, a...))
+		lg.warn.Output(2, fmt.Sprintf(fmtmsg, a...))
 	}
 }
 
 // Error logs messages at or above level Error.
 func (lg *Logger) Error(fmtmsg string, a ...interface{}) {
 	if lg.Level >= Error {
-		lg.err.Output(3, fmt.Sprintf(fmtmsg, a...))
+		lg.err.Output(2, fmt.Sprintf(fmtmsg, a...))
 	}
 }

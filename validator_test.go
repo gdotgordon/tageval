@@ -329,6 +329,15 @@ func TestEvaluation(t *testing.T) {
 	if !res {
 		t.Fatalf("Unexpected false resut for: '%s'", expr)
 	}
+
+	expr = "b + * & < 7.01"
+	val = reflect.ValueOf(7)
+	v1 = val.Int()
+
+	_, err = v.evalBoolExpr("b", v1, expr)
+	if err == nil {
+		t.Fatalf("Did not get expected evaluation error")
+	}
 }
 
 func correlate(t *testing.T, results []Result, expected []checker) {
