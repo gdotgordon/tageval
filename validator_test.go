@@ -50,7 +50,7 @@ type MyStruct struct {
 	j      string `expr:"j[0] == 'P'"`
 	K      Talker
 	L      string        `regexp:"^[aeiou]{4}$|hello"`
-	M      float64       `expr:"M == 3.14"`
+	M      float64       `expr:"== 3.14"`
 	N      time.Time     `expr:"N.getMonth() == new Date().getMonth()"`
 	P      []int         `expr:"var sum = P.reduce(function(pv, cv) { return pv + cv; }, 0); sum == 10"`
 	Q      []interface{} `expr:"Q.length == 0"`
@@ -97,9 +97,6 @@ func TestValidationOlio(t *testing.T) {
 		{"P", true},
 		{"Q", true},
 	})
-	//correlate(t, res.Succ, []string{"C", "D", "Fred", "Location", "G",
-	//	"Fred", "H", "H", "M", "N", "P", "Q"})
-	//correlate(t, res.Fail, []string{"A", "E", "Location", "L"})
 }
 
 func TestZeroValuesOlio(t *testing.T) {

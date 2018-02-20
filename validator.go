@@ -1,14 +1,22 @@
 // Package tageval implements per-field validation for struct
 // members, by adding custom tags containing expressions.  There
 // are two types of validation supported: boolean JavaScript
-// expressions for the current field (or contained structure members)
-// using the "otto" embedded JavaScript engine, and regexp evaluations
-// for strings, Stringers, int types, and using the defualt print format
-// otherwise.  A detailed list containing the results of the evaluation
-// is also returned.
+// expressions and regular expression evaluations.
+//
+// The JavaScript expressions are evaluated using the "otto" embedded
+// JavaScript engine, and may be applied to any struct field (including
+// slices, nested structs, channels, or pointers to these types).
+// Regexp evaluation may be applied to any field of type string,
+// fmt.Stringer, int, uint and bool types.  Other types use the default
+// fmt package representation to prduce a string vale for regexp.
+
+// A simple boolean describing whether the overall valdation succeeded is
+// returned, as well as a detailed list containing the results of each
+// failed evaluation (and optionally successful evaluations) is returned.
 package tageval
 
 import (
+	"bytes"
 	"fmt"
 	"io"
 	"os"
@@ -112,7 +120,7 @@ var (
 
 func init() {
 	mappers = make(map[reflect.Type]TypeMapper)
-	mappers[reflect.TypeOf(time.Now())] = TimeMapper
+	mappers[timeType] = TimeMapper
 }
 
 // NewValidator returns a new item capable of traversing and
@@ -375,7 +383,21 @@ func (v *Validator) processTag(f reflect.StructField,
 	var bv bool
 	var err error
 	if exprTag != "" {
-		bv, err = v.eval.evalBoolExpr(f.Name, iface, exprTag)
+
+		// Support shortcuts for simple relational expressions, i.e.
+		// "<= 7" is a synonym for "<current field name> <= 7".
+		expr := exprTag
+		ts := strings.TrimSpace(expr)
+		switch ts[0] {
+		case '<', '>', '=', '!':
+			var buffer bytes.Buffer
+			buffer.WriteString(f.Name)
+			buffer.WriteString(" ")
+			buffer.WriteString(exprTag)
+			expr = buffer.String()
+		}
+
+		bv, err = v.eval.evalBoolExpr(f.Name, iface, expr)
 		if err != nil {
 			return err
 		}
@@ -385,7 +407,7 @@ func (v *Validator) processTag(f reflect.StructField,
 				Name:  f.Name,
 				Value: iface,
 				Type:  f.Type,
-				Expr:  exprTag,
+				Expr:  expr,
 				Valid: bv,
 			}
 			*res = append(*res, r)
