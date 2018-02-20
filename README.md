@@ -43,18 +43,18 @@ func main() {
     ms1 := &MyStruct{4}
     v, err := tageval.NewValidator()
     if err != nil {
-       fmt.Printf("initialization failed with: %v", err)
+       fmt.Fprintf(os.Stderr, "initialization failed with: %v", err)
        os.Exit(1)
     }
     ok, res, err := v.Validate(ms1)
     if err != nil {
-        fmt.Printf(os.Stderr, "validation failed with error: %v", err)
+        fmt.Fprintf(os.Stderr, "validation failed with error: %v", err)
 	os.Exit(1)
     }
     if !ok {
         t.Fatalf("unexpected failure result")
     }
-    res.PrintResults(os.Stdout)
+    tageval.PrintResults(os.Stdout, res)
 }
 ```
 
@@ -103,9 +103,9 @@ Spec	SpecialInt `json:"spec" regexp:"^.*: [-]?[0-9]+$"`
 }
 ...
 ms1 := &SpecialStruct{-56}
-v, rrr := tageval.NewValidator(tageval.Option{ShowSuccesses, true})
+v, err := tageval.NewValidator(tageval.Option{ShowSuccesses, true})
 if err != nil {
-    fmt.Printf("initialization failed with: %v", err)
+    fmt.Fprintf(os.Stderr, "initialization failed with: %v", err)
     os.Exit(1)
 }
 ok, res, err := v.Validate(ms1)
