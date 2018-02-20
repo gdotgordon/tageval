@@ -139,4 +139,3 @@ In the example above, you could use a ";" to still include your validation expre
 ## More Detailed Use Cases
 Please see the unit tests for some more advanced examples and ideas.  One interesting concept is how a struct member that is an Interface is handled with regard to its concrete value.
 
-
