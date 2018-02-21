@@ -276,6 +276,30 @@ func TestPrivateFields(t *testing.T) {
 	})
 }
 
+func TestEmptyInterface(t *testing.T) {
+	type DoGooder interface {
+		DoGoodThings()
+	}
+	type IfaceOnly struct {
+		DoGood DoGooder
+	}
+
+	v, err := NewValidator(Option{ShowSuccesses, true})
+	if err != nil {
+		t.Fatalf("error creating validator: %v", err)
+	}
+
+	ok, res, err := v.Validate(IfaceOnly{})
+	if err != nil {
+		t.Fatalf("validation failed with error: %v", err)
+	}
+	if !ok {
+		t.Fatalf("unexpected failure result")
+	}
+
+	PrintResults(os.Stdout, res)
+}
+
 func TestNewOptions(t *testing.T) {
 	_, err := NewValidator(Option{ShowSuccesses, 3})
 	if err == nil {

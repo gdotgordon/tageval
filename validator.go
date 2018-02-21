@@ -259,12 +259,9 @@ func (v *Validator) traverse(val reflect.Value, res *[]Result) error {
 	// Get the concrete type/value of the interface to process,
 	// as this may be a type that has tagged fields.
 	case reflect.Interface:
-		if val.CanInterface() {
-			iface := val.Interface()
-			if iface != nil {
-				if err = v.traverse(val.Elem(), res); err != nil {
-					return err
-				}
+		if val.IsValid() && !val.IsNil() {
+			if err = v.traverse(val.Elem(), res); err != nil {
+				return err
 			}
 		}
 
