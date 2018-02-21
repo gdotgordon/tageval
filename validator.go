@@ -9,7 +9,7 @@
 // Regexp evaluation may be applied to any field of type string,
 // fmt.Stringer, int, uint and bool types.  Other types use the default
 // fmt package representation to prduce a string vale for regexp.
-
+//
 // A simple boolean describing whether the overall valdation succeeded is
 // returned, as well as a detailed list containing the results of each
 // failed evaluation (and optionally successful evaluations) is returned.
@@ -167,6 +167,14 @@ func NewValidator(options ...Option) (*Validator, error) {
 // declaration (above).
 func (v *Validator) AddTypeMapping(t reflect.Type, tm TypeMapper) {
 	v.eval.addTypeMapping(t, tm)
+}
+
+// Copy makes an effective copy of the current Validtor.  Making a copy
+// for each goroutine using validation is a solution for the lack of
+// concurrency in the underlying Javascript engine.  Note the caches
+// of compiled expressions and regexps are not copied.
+func (v *Validator) Copy() *Validator {
+	return &Validator{v.processAsJSON, v.showSuccesses, v.eval.copy()}
 }
 
 // Validate a Go item (or pointer) of any kind.  If the item is not

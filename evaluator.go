@@ -52,6 +52,18 @@ func (e *evaluator) addTypeMapping(t reflect.Type, f TypeMapper) {
 	e.mapping[t] = tmf
 }
 
+func (e *evaluator) copy() *evaluator {
+	ce := &evaluator{}
+	ce.vm = e.vm.Copy()
+	ce.regexps = make(map[string]*regexp.Regexp)
+	ce.mapping = make(map[reflect.Type]internalTypeMapper)
+	for k, v := range e.mapping {
+		ce.mapping[k] = v
+	}
+	ce.scripts = make(map[string]*otto.Script)
+	return ce
+}
+
 // Evaluate a boolean JavaScript expression.  Returns the bool
 // as per whether the validation succeeded, or an error if something
 // went wrong evaluatng the expression.

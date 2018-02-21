@@ -296,8 +296,37 @@ func TestEmptyInterface(t *testing.T) {
 	if !ok {
 		t.Fatalf("unexpected failure result")
 	}
-
 	PrintResults(os.Stdout, res)
+}
+
+func TestCopyValidtor(t *testing.T) {
+	type CopyTest struct {
+		A int    `expr:"== 8"`
+		B string `regexp:"^hello$"`
+		C int    `expr:"== 9"`
+		D string `regexp:"^goodbye$"`
+	}
+	v, err := NewValidator(Option{ShowSuccesses, true})
+	if err != nil {
+		t.Fatalf("error creating validator: %v", err)
+	}
+	vc := v.Copy()
+	ct := CopyTest{8, "hello", 10, "adios"}
+	ok, res, err := vc.Validate(ct)
+	if err != nil {
+		t.Fatalf("validation failed with error: %v", err)
+	}
+	if ok {
+		t.Fatalf("unexpected success result")
+	}
+	PrintResults(os.Stdout, res)
+	expected := []checker{
+		checker{"A", true},
+		checker{"B", true},
+		checker{"C", false},
+		checker{"D", false},
+	}
+	correlate(t, res, expected)
 }
 
 func TestNewOptions(t *testing.T) {
