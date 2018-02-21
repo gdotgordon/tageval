@@ -235,21 +235,25 @@ func TestPrivateFields(t *testing.T) {
 	}
 
 	type noyb struct {
-		blah string `regexp:"^ick$" expr:"blah == \"ick\""`
+		blah string  `regexp:"^ick$" expr:"blah == \"ick\""`
+		bval bool    `expr:"!bval"`
+		f    float64 `expr:"Math.sqrt(f) > 5"`
 	}
 
 	type privy struct {
 		name   string `expr:"name[0] == 'J'"`
 		age    int    `expr:"age > 21"`
-		things []int  `expr:"things[0] > 2 && things[1] > 0"`
+		things [2]int `expr:"things[0] > 2 && things[1] > 0"`
 		other  []myob `expr:"(other[0]['Second'] - other[0]['First']) == -155"`
 		iptr   *int   `expr:"iptr == 75"`
 		b      noyb
+		y      int  `expr:"!= 5"`
 		z      *int `expr:"z == 5"`
 	}
 
 	ival := 75
-	p := privy{"Joe", 50, []int{3, 4}, []myob{{300, 145}}, &ival, noyb{"ick"}, nil}
+	p := privy{"Joe", 50, [2]int{3, 4}, []myob{{300, 145}}, &ival,
+		noyb{"ick", 1 > 2, 45.1}, 0, nil}
 	rv := reflect.ValueOf(&p).Elem()
 	v, err := NewValidator(Option{ProcessAsJSON, false},
 		Option{ShowSuccesses, true})
@@ -273,6 +277,9 @@ func TestPrivateFields(t *testing.T) {
 		{"iptr", true},
 		{"blah", true},
 		{"blah", true},
+		{"bval", true},
+		{"f", true},
+		{"y", true},
 	})
 }
 
@@ -299,7 +306,23 @@ func TestEmptyInterface(t *testing.T) {
 	PrintResults(os.Stdout, res)
 }
 
-func TestCopyValidtor(t *testing.T) {
+func TestValidatorError(t *testing.T) {
+	type Cracked struct {
+		BadEgg string `expr:"this omelet has no !*@&^% mushrooms"`
+	}
+
+	v, err := NewValidator(Option{ShowSuccesses, true})
+	if err != nil {
+		t.Fatalf("error creating validator: %v", err)
+	}
+
+	_, _, err = v.Validate(Cracked{"Jumbo"})
+	if err == nil {
+		t.Fatalf("expected validation error did not occur.")
+	}
+}
+
+func TestCopyValidator(t *testing.T) {
 	type CopyTest struct {
 		A int    `expr:"== 8"`
 		B string `regexp:"^hello$"`
@@ -313,6 +336,36 @@ func TestCopyValidtor(t *testing.T) {
 	vc := v.Copy()
 	ct := CopyTest{8, "hello", 10, "adios"}
 	ok, res, err := vc.Validate(ct)
+	if err != nil {
+		t.Fatalf("validation failed with error: %v", err)
+	}
+	if ok {
+		t.Fatalf("unexpected success result")
+	}
+	PrintResults(os.Stdout, res)
+	expected := []checker{
+		checker{"A", true},
+		checker{"B", true},
+		checker{"C", false},
+		checker{"D", false},
+	}
+	correlate(t, res, expected)
+}
+
+func TestRegexpStringTypes(t *testing.T) {
+	type RegTest struct {
+		A int    `regexp:"^[-]?[0-9]{1,}$""`
+		B uint32 `regexp:"^[0-9]{3}$"`
+		C bool   `regexp:"^false$"`
+		D string `regexp:"^goodbye$"`
+		E string `json:"-" regexp:"hi"`
+	}
+	v, err := NewValidator(Option{ShowSuccesses, true})
+	if err != nil {
+		t.Fatalf("error creating validator: %v", err)
+	}
+	rt := RegTest{-84, 345, 5 > 4, "au revoir", "hi"}
+	ok, res, err := v.Validate(rt)
 	if err != nil {
 		t.Fatalf("validation failed with error: %v", err)
 	}

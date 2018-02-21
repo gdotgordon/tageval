@@ -246,8 +246,9 @@ func (v *Validator) traverse(val reflect.Value, res *[]Result) error {
 
 	// Dereference the pointer if not nil.
 	case reflect.Ptr:
-		if val.Pointer() != 0 {
-			if err = v.traverse(val.Elem(), res); err != nil {
+		rv := reflect.Indirect(val)
+		if rv.Kind() != reflect.Invalid {
+			if err = v.traverse(reflect.Indirect(val), res); err != nil {
 				return err
 			}
 		}
@@ -451,7 +452,7 @@ func (v *Validator) processTag(f reflect.StructField,
 	return nil
 }
 
-// For validation, use a reasonable string value if we can
+// For regexps, use a reasonable string value if we can
 // determine one for the type, otherwise use the default
 // "fmt" string conversion.
 func (v Validator) iToStr(i interface{}) string {
