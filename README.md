@@ -62,7 +62,7 @@ In general, an expression uses the Go field's name (here "A") as the name of the
 
 Back to the sample above, the test shown here leads to an `ok` return value of `false`, meaning the validation failed, as the value of A is not greater than 5.  The second parameter, `res` is an object of type `[]Result`, which breaks down in detail the results of failures (or optionally both successes and failures) from the `Validate()` call.  This is extremely helpful for figuring out what went wrong, especially with multiple expressions, but may be ignored by assigning it to `_`.  Again, the `error` type is reserved for an execution error in the validation, and not a validation failure.
 
-One final note: simple relational expressions such as `A > 5`, may be abbreviated, in this case as `> 5`.  This works for expressions beginning with '<', '<=', '>', '>=', '==' and '!='.  This allows for a change of the field name without having to edit the expression, among other things.  So the example above could have been written as:
+One final note: simple relational expressions such as `A > 5` may be abbreviated, in this case as `> 5`.  This works for expressions beginning with '<', '<=', '>', '>=', '==' and '!='.  This allows for a change of the field name without having to edit the expression, among other things.  So the example above could have been written as:
 
 ```
 type MyStruct struct {
