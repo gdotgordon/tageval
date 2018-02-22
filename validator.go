@@ -373,7 +373,7 @@ func (v *Validator) processTag(f reflect.StructField,
 		default:
 			if safe || !val.CanAddr() {
 				// Even in non-safe mode, an interface may not work.
-				return fmt.Errorf("Cannot access private field: '%s'\n",
+				return fmt.Errorf("cannot access private field: '%s'",
 					f.Name)
 			}
 
