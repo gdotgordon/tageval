@@ -23,30 +23,17 @@ func TestLogger(t *testing.T) {
 	tests = append(tests, levelTest{Error,
 		[]string{"", "", "", "hello"}})
 
-	for _, v := range tests {
-		bb := new(bytes.Buffer)
-		log := NewLogger(bb, v.level)
-		log.Trace("hello")
-		if !strings.HasSuffix(strings.TrimSpace(bb.String()), v.expected[0]) {
-			t.Fatalf("%v log produced wrong string: '%s'", v.level, bb.String())
-		}
-		bb = new(bytes.Buffer)
-		log = NewLogger(bb, v.level)
-		log.Info("hello")
-		if !strings.HasSuffix(strings.TrimSpace(bb.String()), v.expected[1]) {
-			t.Fatalf("%v log produced wrong string: '%s'", v.level, bb.String())
-		}
-		bb = new(bytes.Buffer)
-		log = NewLogger(bb, v.level)
-		log.Warning("hello")
-		if !strings.HasSuffix(strings.TrimSpace(bb.String()), v.expected[2]) {
-			t.Fatalf("%v log produced wrong string: '%s'", v.level, bb.String())
-		}
-		bb = new(bytes.Buffer)
-		log = NewLogger(bb, v.level)
-		log.Error("hello")
-		if !strings.HasSuffix(strings.TrimSpace(bb.String()), v.expected[3]) {
-			t.Fatalf("%v log produced wrong string: '%s'", v.level, bb.String())
+	lf := []func(*Logger, string, ...interface{}){
+		(*Logger).Trace, (*Logger).Info, (*Logger).Warning, (*Logger).Error}
+
+	for _, ltest := range tests {
+		for i, fn := range lf {
+			bb := new(bytes.Buffer)
+			log := NewLogger(bb, ltest.level)
+			fn(log, "hello")
+			if !strings.HasSuffix(strings.TrimSpace(bb.String()), ltest.expected[i]) {
+				t.Fatalf("log produced wrong string: '%s'", bb.String())
+			}
 		}
 	}
 }
