@@ -68,8 +68,8 @@ type Validator struct {
 }
 
 // A Result captures the data from a single evaluation.  The validation
-// returns separate lists of successful and failed validations containing
-// the following information.
+// returns a list of failed (and optionally successful) validations
+// containing the following information.
 type Result struct {
 	Name  string
 	Value interface{}
@@ -184,31 +184,30 @@ func (v *Validator) Copy() *Validator {
 // something went wrong.  Note, failed validations do not cause an error
 // to be returned.
 func (v *Validator) Validate(item interface{}) (bool, []Result, error) {
-	return v.doValidation(reflect.ValueOf(item))
+	return v.doValidation(reflect.ValueOf(item), true)
 }
 
 // ValidateAddressable is a variant of "Validate()" that accepts a
-// Go reflect.Value of any kind that is addressable.  This variant
-// should only be used if it is desired to perform expression evaluation
-// on private fields that are not of primitive type.  The following
-// creates such an addressable item:
-//	p := struct{foo: "bar"}
-//	rv := reflect.ValueOf(&p).Elem()
-//  ok, _, err := v.Validate(rv)
-//
-//If the item is not a struct, or does not contain or reference a
-// struct anywhere, there will be nothing to evaluate, as that is
-// where all the tags live.  This function returns the results of all
-// validations, or an error if something went wrong.  Note, failed
-// validations do not cause an error to be returned.
-func (v *Validator) ValidateAddressable(rvAddr reflect.Value) (bool,
+// A value of any kind that is addressable.  This means it should be
+// a pointer to an element (i.e. &elem) rather than the element itself.
+// This variant should only be used if it is desired to perform expression
+// evaluation on private fields that are not of primitive type.
+func (v *Validator) ValidateAddressable(itemAddr interface{}) (bool,
 	[]Result, error) {
-	return v.doValidation(rvAddr)
+	rv := reflect.ValueOf(itemAddr)
+	switch rv.Kind() {
+	case reflect.Ptr, reflect.Interface:
+	default:
+		return false, nil, fmt.Errorf("Supplied item (%v) is not addressable",
+			itemAddr)
+	}
+	return v.doValidation(rv.Elem(), false)
 }
 
-func (v *Validator) doValidation(rv reflect.Value) (bool, []Result, error) {
+func (v *Validator) doValidation(rv reflect.Value, safe bool) (
+	bool, []Result, error) {
 	var res []Result
-	if err := v.traverse(rv, &res); err != nil {
+	if err := v.traverse(rv, safe, &res); err != nil {
 		return false, nil, err
 	}
 	ok := true
@@ -225,7 +224,8 @@ func (v *Validator) doValidation(rv reflect.Value) (bool, []Result, error) {
 // traverse the value, eventually landing on a struct type,
 // which is where the tags are found.  Types such as built-ins
 // and channels require no further processing, so no action happens.
-func (v *Validator) traverse(val reflect.Value, res *[]Result) error {
+func (v *Validator) traverse(val reflect.Value, safe bool,
+	res *[]Result) error {
 	var err error
 	t := val.Type()
 
@@ -239,7 +239,7 @@ func (v *Validator) traverse(val reflect.Value, res *[]Result) error {
 	// For slice and array, traverse each entry individually.
 	case reflect.Slice, reflect.Array:
 		for i := 0; i < val.Len(); i++ {
-			if err = v.traverse(val.Index(i), res); err != nil {
+			if err = v.traverse(val.Index(i), safe, res); err != nil {
 				return err
 			}
 		}
@@ -248,7 +248,7 @@ func (v *Validator) traverse(val reflect.Value, res *[]Result) error {
 	case reflect.Ptr:
 		rv := reflect.Indirect(val)
 		if rv.Kind() != reflect.Invalid {
-			if err = v.traverse(reflect.Indirect(val), res); err != nil {
+			if err = v.traverse(reflect.Indirect(val), safe, res); err != nil {
 				return err
 			}
 		}
@@ -257,10 +257,10 @@ func (v *Validator) traverse(val reflect.Value, res *[]Result) error {
 	case reflect.Map:
 		keys := val.MapKeys()
 		for _, key := range keys {
-			if err = v.traverse(key, res); err != nil {
+			if err = v.traverse(key, safe, res); err != nil {
 				return err
 			}
-			if err = v.traverse(val.MapIndex(key), res); err != nil {
+			if err = v.traverse(val.MapIndex(key), safe, res); err != nil {
 				return err
 			}
 		}
@@ -269,7 +269,7 @@ func (v *Validator) traverse(val reflect.Value, res *[]Result) error {
 	// as this may be a type that has tagged fields.
 	case reflect.Interface:
 		if val.IsValid() && !val.IsNil() {
-			if err = v.traverse(val.Elem(), res); err != nil {
+			if err = v.traverse(val.Elem(), safe, res); err != nil {
 				return err
 			}
 		}
@@ -294,12 +294,12 @@ func (v *Validator) traverse(val reflect.Value, res *[]Result) error {
 			}
 
 			if handleTags {
-				if err = v.processTag(f, val.Field(i), res); err != nil {
+				if err = v.processTag(f, val.Field(i), safe, res); err != nil {
 					return err
 				}
 			}
 
-			if err = v.traverse(val.Field(i), res); err != nil {
+			if err = v.traverse(val.Field(i), safe, res); err != nil {
 				return err
 			}
 		}
@@ -311,7 +311,7 @@ func (v *Validator) traverse(val reflect.Value, res *[]Result) error {
 // Validation can also only occur if our custom tags are present,
 // although the json tag need not be present.
 func (v *Validator) processTag(f reflect.StructField,
-	val reflect.Value, res *[]Result) error {
+	val reflect.Value, safe bool, res *[]Result) error {
 
 	// Our expression eval tags.
 	exprTag := f.Tag.Get("expr")
@@ -320,13 +320,10 @@ func (v *Validator) processTag(f reflect.StructField,
 		return nil
 	}
 
-	var jtag string
-	if f.Tag != "" {
-		jtag, _ = f.Tag.Lookup("json")
-		if v.processAsJSON && jtag == "-" {
-			// This one won't get serialized to JSON, so skip.
-			return nil
-		}
+	jtag, _ := f.Tag.Lookup("json")
+	if v.processAsJSON && jtag == "-" {
+		// This one won't get serialized to JSON, so skip.
+		return nil
 	}
 
 	logger.Trace("Process tag, name: %s type: %v kind: %v\n",
@@ -338,14 +335,12 @@ func (v *Validator) processTag(f reflect.StructField,
 		val = val.Elem()
 	}
 
-	// If the value is something like a nil interface concrete object,
-	// forget it.
-	var iface interface{}
-
+	// If the value is something like a nil interface concrete object, skip.
 	if !val.IsValid() {
 		return nil
 	}
 
+	var iface interface{}
 	if val.CanInterface() {
 		iface = val.Interface()
 	} else {
@@ -355,13 +350,33 @@ func (v *Validator) processTag(f reflect.StructField,
 			iface = val.String()
 		case reflect.Int, reflect.Int16, reflect.Int32, reflect.Int64:
 			iface = val.Int()
+		case reflect.Uint, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+			iface = val.Uint()
 		case reflect.Float32, reflect.Float64:
 			iface = val.Float()
 		case reflect.Complex64, reflect.Complex128:
 			iface = val.Complex()
 		case reflect.Bool:
 			iface = val.Bool()
+		case reflect.Interface, reflect.Ptr:
+			for {
+				if !val.IsValid() || val.IsNil() {
+					return nil
+				}
+				val = val.Elem()
+				if val.Kind() != reflect.Interface &&
+					val.Kind() != reflect.Ptr {
+					break
+				}
+			}
+			fallthrough
 		default:
+			if safe || !val.CanAddr() {
+				// Even in non-safe mode, an interface may not work.
+				return fmt.Errorf("Cannot access private field: '%s'\n",
+					f.Name)
+			}
+
 			// Been beat up and battered 'round
 			// Been sent up, and I've been shot down
 			// You're the best thing that I've ever found
@@ -508,7 +523,7 @@ func (res *Result) String() string {
 		res.Name, tstr, res.Value, res.Expr, valid)
 }
 
-// PrintResults shows the lists of successful and unsuccessful
+// PrintResults shows the lists of unsuccessful (and optioanlly successful)
 // validations.
 func PrintResults(w io.Writer, res []Result) {
 	fmt.Fprintln(w, "Results:")

@@ -19,7 +19,7 @@ type Another struct {
 	Location string `json:"location" expr:"Location.indexOf('TX') != -1"`
 }
 
-func (a Another) String() string {
+func (a *Another) String() string {
 	return fmt.Sprintf("Fred: '%s', Location: '%s'", a.Fred, a.Location)
 }
 
@@ -29,12 +29,12 @@ type Talker interface {
 
 type TalkingInt int
 
-func (t TalkingInt) Talk() string {
+func (t *TalkingInt) Talk() string {
 	return fmt.Sprintf("Hi, let me introudce myself, I am '%d'", t)
 }
 
-func (t TalkingInt) String() string {
-	return strconv.Itoa(int(t))
+func (t *TalkingInt) String() string {
+	return strconv.Itoa(int(*t))
 }
 
 type MyStruct struct {
@@ -63,10 +63,11 @@ func (ms MyStruct) move(string) (int, error) {
 
 func TestValidationOlio(t *testing.T) {
 	b1 := byte(3)
+	ti := TalkingInt(7)
 	ms1 := &MyStruct{A: 1, B: time.Now(), C: "hello",
 		D: []Another{Another{"Joe", "Plano, TX"}},
 		E: &b1, G: Another{"bingo", "Oshkosh, WI"},
-		H: TalkingInt(7), I: map[string]int{"green": 12, "blue": 93}, j: "Pete",
+		H: &ti, I: map[string]int{"green": 12, "blue": 93}, j: "Pete",
 		L: "uoiea", M: 3.14, N: time.Now().Add(2 * time.Second),
 		P: []int{1, 2, 3, 4}}
 	v, err := NewValidator(Option{ShowSuccesses, true})
@@ -228,6 +229,16 @@ func TestMap(t *testing.T) {
 	correlate(t, res, expected)
 }
 
+type slint []int64
+
+func (s slint) String() string {
+	var sum int64
+	for _, v := range s {
+		sum += v
+	}
+	return strconv.FormatInt(sum, 10)
+}
+
 func TestPrivateFields(t *testing.T) {
 	type myob struct {
 		First  int
@@ -238,6 +249,7 @@ func TestPrivateFields(t *testing.T) {
 		blah string  `regexp:"^ick$" expr:"blah == \"ick\""`
 		bval bool    `expr:"!bval"`
 		f    float64 `expr:"Math.sqrt(f) > 5"`
+		g    uint64  `expr:"g > 0"`
 	}
 
 	type privy struct {
@@ -253,14 +265,27 @@ func TestPrivateFields(t *testing.T) {
 
 	ival := 75
 	p := privy{"Joe", 50, [2]int{3, 4}, []myob{{300, 145}}, &ival,
-		noyb{"ick", 1 > 2, 45.1}, 0, nil}
-	rv := reflect.ValueOf(&p).Elem()
+		noyb{"ick", 1 > 2, 45.1, 3}, 0, nil}
 	v, err := NewValidator(Option{ProcessAsJSON, false},
 		Option{ShowSuccesses, true})
 	if err != nil {
 		t.Fatalf("error creating validator: %v", err)
 	}
-	ok, res, err := v.ValidateAddressable(rv)
+
+	// Not addressable inside.
+	ok, res, err := v.Validate(p)
+	if err == nil {
+		t.Fatalf("did not receive expected error")
+	}
+
+	// Not addressable from the start.
+	ok, res, err = v.ValidateAddressable(p)
+	if err == nil {
+		t.Fatalf("did not receive expected error")
+	}
+
+	// Good to go.
+	ok, res, err = v.ValidateAddressable(&p)
 	if err != nil {
 		t.Fatalf("validation failed with error: %v", err)
 	}
@@ -279,8 +304,29 @@ func TestPrivateFields(t *testing.T) {
 		{"blah", true},
 		{"bval", true},
 		{"f", true},
+		{"g", true},
 		{"y", true},
 	})
+
+	// This is a bizarre case, but it works!  We have a pointer to
+	// an interface, with an eval based on the concrete type, plus
+	// it's a private member, so in the end we have to dig it out
+	// with an unsafe pointer.  The weirdness actually begins with
+	// the fact that we're even using a pointer to an interface here.
+	type stinger struct {
+		s *fmt.Stringer `expr:"s[1] == 7"`
+	}
+	var stgr fmt.Stringer
+	stgr = &slint{3, 7}
+	s := stinger{&stgr}
+	ok, res, err = v.ValidateAddressable(&s)
+	if err != nil {
+		t.Fatalf("validation failed with error: %v", err)
+	}
+	PrintResults(os.Stdout, res)
+	if !ok {
+		t.Fatalf("unexpected failure result")
+	}
 }
 
 func TestEmptyInterface(t *testing.T) {
