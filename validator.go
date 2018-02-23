@@ -472,7 +472,7 @@ func (v *Validator) processTag(f reflect.StructField,
 // For regexps, use a reasonable string value if we can
 // determine one for the type, otherwise use the default
 // "fmt" string conversion.
-func (v Validator) iToStr(i interface{}) string {
+func (v *Validator) iToStr(i interface{}) string {
 	switch i.(type) {
 	case string:
 		return i.(string)
