@@ -8,28 +8,28 @@ import (
 
 func TestLogger(t *testing.T) {
 	type levelTest struct {
-		level    LogLevel
+		level    logLevel
 		expected []string
 	}
 
 	var tests []levelTest
-	tests = append(tests, levelTest{Off, []string{"", "", "", ""}})
-	tests = append(tests, levelTest{Trace,
+	tests = append(tests, levelTest{logOff, []string{"", "", "", ""}})
+	tests = append(tests, levelTest{logTrace,
 		[]string{"hello", "hello", "hello", "hello"}})
-	tests = append(tests, levelTest{Info,
+	tests = append(tests, levelTest{logInfo,
 		[]string{"", "hello", "hello", "hello"}})
-	tests = append(tests, levelTest{Warning,
+	tests = append(tests, levelTest{logWarn,
 		[]string{"", "", "hello", "hello"}})
-	tests = append(tests, levelTest{Error,
+	tests = append(tests, levelTest{logErr,
 		[]string{"", "", "", "hello"}})
 
-	lf := []func(*Logger, string, ...interface{}){
-		(*Logger).Trace, (*Logger).Info, (*Logger).Warning, (*Logger).Error}
+	lf := []func(*logger, string, ...interface{}){
+		(*logger).trace, (*logger).info, (*logger).warn, (*logger).err}
 
 	for _, ltest := range tests {
 		for i, fn := range lf {
 			bb := new(bytes.Buffer)
-			log := NewLogger(bb, ltest.level)
+			log := newLogger(bb, ltest.level)
 			fn(log, "hello")
 			if !strings.HasSuffix(strings.TrimSpace(bb.String()), ltest.expected[i]) {
 				t.Fatalf("log produced wrong string: '%s'", bb.String())

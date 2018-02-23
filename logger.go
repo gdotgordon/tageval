@@ -9,15 +9,15 @@ import (
 
 // Constants for the various log levels in increasing verbosity.
 const (
-	Off LogLevel = iota
-	Error
-	Warning
-	Info
-	Trace
+	logOff logLevel = iota
+	logErr
+	logWarn
+	logInfo
+	logTrace
 )
 
 // LogLevel is the type for logging thresholds.
-type LogLevel int
+type logLevel int
 
 // Logger is a simple logger with configurable level filter that
 // avoids uneeded string construction.
@@ -30,37 +30,37 @@ type LogLevel int
 // a specific logger in a library seeems problematic.  Hence the simple
 // self-contained logger, that should have logging level set to "OFF",
 // unless trying to track a problem down.
-type Logger struct {
-	Level LogLevel
-	trace *log.Logger
-	info  *log.Logger
-	warn  *log.Logger
-	err   *log.Logger
+type logger struct {
+	Level    logLevel
+	traceLog *log.Logger
+	infoLog  *log.Logger
+	warnLog  *log.Logger
+	errLog   *log.Logger
 }
 
 // NewLogger creates a new logger that writes to the specifed writer,
 // and uses the supplied logging level.
-func NewLogger(writer io.Writer, level LogLevel) *Logger {
+func newLogger(writer io.Writer, level logLevel) *logger {
 	traceHandle := ioutil.Discard
 	infoHandle := ioutil.Discard
 	warningHandle := ioutil.Discard
 	errorHandle := ioutil.Discard
 
 	// Was I just looking for a valid use case for "fallthough"?
-	// I think this may be one of those cases.
+	// I think this may be one of those cases where it makes sense.
 	switch level {
-	case Trace:
+	case logTrace:
 		traceHandle = writer
 		fallthrough
-	case Info:
+	case logInfo:
 		infoHandle = writer
 		fallthrough
-	case Warning:
+	case logWarn:
 		warningHandle = writer
 		fallthrough
-	case Error:
+	case logErr:
 		errorHandle = writer
-	case Off:
+	case logOff:
 	}
 
 	traceLog := log.New(traceHandle,
@@ -76,7 +76,7 @@ func NewLogger(writer io.Writer, level LogLevel) *Logger {
 		"ERROR: ",
 		log.Ldate|log.Ltime|log.Lshortfile)
 
-	return &Logger{
+	return &logger{
 		level,
 		traceLog,
 		infoLog,
@@ -86,29 +86,29 @@ func NewLogger(writer io.Writer, level LogLevel) *Logger {
 }
 
 // Trace logs messages at or above level Trace.
-func (lg *Logger) Trace(fmtmsg string, a ...interface{}) {
-	if lg.Level >= Trace {
-		lg.trace.Output(2, fmt.Sprintf(fmtmsg, a...))
+func (lg *logger) trace(fmtmsg string, a ...interface{}) {
+	if lg.Level >= logTrace {
+		lg.traceLog.Output(2, fmt.Sprintf(fmtmsg, a...))
 	}
 }
 
 // Info logs messages at or above level Info.
-func (lg *Logger) Info(fmtmsg string, a ...interface{}) {
-	if lg.Level >= Info {
-		lg.info.Output(2, fmt.Sprintf(fmtmsg, a...))
+func (lg *logger) info(fmtmsg string, a ...interface{}) {
+	if lg.Level >= logInfo {
+		lg.infoLog.Output(2, fmt.Sprintf(fmtmsg, a...))
 	}
 }
 
 // Warning logs messages at or above level Warning.
-func (lg *Logger) Warning(fmtmsg string, a ...interface{}) {
-	if lg.Level >= Warning {
-		lg.warn.Output(2, fmt.Sprintf(fmtmsg, a...))
+func (lg *logger) warn(fmtmsg string, a ...interface{}) {
+	if lg.Level >= logWarn {
+		lg.warnLog.Output(2, fmt.Sprintf(fmtmsg, a...))
 	}
 }
 
 // Error logs messages at or above level Error.
-func (lg *Logger) Error(fmtmsg string, a ...interface{}) {
-	if lg.Level >= Error {
-		lg.err.Output(2, fmt.Sprintf(fmtmsg, a...))
+func (lg *logger) err(fmtmsg string, a ...interface{}) {
+	if lg.Level >= logErr {
+		lg.errLog.Output(2, fmt.Sprintf(fmtmsg, a...))
 	}
 }

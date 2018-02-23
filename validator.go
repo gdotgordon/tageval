@@ -98,7 +98,7 @@ var (
 )
 
 var (
-	logger = NewLogger(os.Stderr, Off)
+	lg = newLogger(os.Stderr, logOff)
 
 	timeType = reflect.TypeOf(time.Now())
 )
@@ -220,7 +220,7 @@ func (v *Validator) traverse(val reflect.Value, safe bool,
 		return nil
 	}
 
-	logger.Trace("Incoming: %v, %v\n", t, t.Kind())
+	lg.trace("Incoming: %v, %v\n", t, t.Kind())
 	switch t.Kind() {
 
 	// For slice and array, traverse each entry individually.
@@ -313,7 +313,7 @@ func (v *Validator) processTag(f reflect.StructField,
 		return nil
 	}
 
-	logger.Trace("Process tag, name: %s type: %v kind: %v\n",
+	lg.trace("Process tag, name: %s type: %v kind: %v\n",
 		f.Name, f.Type.Name(), f.Type.Kind())
 
 	// Get the underlying or concrete value.
@@ -383,7 +383,7 @@ func (v *Validator) processTag(f reflect.StructField,
 			isZero := reflect.DeepEqual(iface,
 				reflect.Zero(reflect.TypeOf(iface)).Interface())
 			if isZero {
-				logger.Info("Skip zero value for %s, '%v'\n", f.Name, iface)
+				lg.info("Skip zero value for %s, '%v'\n", f.Name, iface)
 				return nil
 			}
 		}
@@ -449,7 +449,7 @@ func (v *Validator) processTag(f reflect.StructField,
 		}
 	}
 
-	logger.Trace("result for '%s', '%s', value: '%v': %t\n",
+	lg.trace("result for '%s', '%s', value: '%v': %t\n",
 		regexpTag, f.Name, iface, bv)
 	return nil
 }
