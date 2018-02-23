@@ -1,5 +1,5 @@
 // Package tageval implements per-field validation for struct
-// members, by adding custom tags containing expressions.  There
+// members by adding custom tags containing expressions.  There
 // are two types of validation supported: boolean JavaScript
 // expressions and regular expression evaluations.
 //
@@ -8,7 +8,7 @@
 // slices, nested structs, channels, or pointers to these types).
 // Regexp evaluation may be applied to any field of type string,
 // fmt.Stringer, int, uint and bool types.  Other types use the default
-// fmt package representation to prduce a string vale for regexp.
+// fmt package representation to prduce a string value for regexp.
 //
 // A simple boolean describing whether the overall valdation succeeded is
 // returned, as well as a detailed list containing the results of each
@@ -188,10 +188,11 @@ func (v *Validator) Validate(item interface{}) (bool, []Result, error) {
 }
 
 // ValidateAddressable is a variant of "Validate()" that accepts a
-// A value of any kind that is addressable.  This means it should be
+// value of any kind that is addressable.  This means it should be
 // a pointer to an element (i.e. &elem) rather than the element itself.
 // This variant should only be used if it is desired to perform expression
-// evaluation on private fields that are not of primitive type.
+// evaluation on private fields that are not of primitive type, as it
+// requires the "unsafe" package to crete an item.
 func (v *Validator) ValidateAddressable(itemAddr interface{}) (bool,
 	[]Result, error) {
 	rv := reflect.ValueOf(itemAddr)
@@ -206,6 +207,7 @@ func (v *Validator) ValidateAddressable(itemAddr interface{}) (bool,
 
 func (v *Validator) doValidation(rv reflect.Value, safe bool) (
 	bool, []Result, error) {
+
 	var res []Result
 	if err := v.traverse(rv, safe, &res); err != nil {
 		return false, nil, err
@@ -281,7 +283,7 @@ func (v *Validator) traverse(val reflect.Value, safe bool,
 
 			// If following JSON serialization rules, skip
 			// any private fields.
-			handleTags := true
+			handleTag := true
 			if v.processAsJSON {
 				var first rune
 				for _, c := range f.Name {
@@ -289,11 +291,11 @@ func (v *Validator) traverse(val reflect.Value, safe bool,
 					break
 				}
 				if !unicode.IsUpper(first) {
-					handleTags = false
+					handleTag = false
 				}
 			}
 
-			if handleTags {
+			if handleTag {
 				if err = v.processTag(f, val.Field(i), safe, res); err != nil {
 					return err
 				}
@@ -500,7 +502,7 @@ func (res *Result) String() string {
 		}
 		tstr = "[]" + name
 	case reflect.Array:
-		tstr = fmt.Sprintf("[%d]%s", tn.Size(), tn.Elem().Name())
+		tstr = fmt.Sprintf("[%d]%s", tn.Len(), tn.Elem().Name())
 	case reflect.Map:
 		tstr = fmt.Sprintf("map[%s]%s", tn.Key(), tn.Elem())
 	case reflect.Chan:
@@ -519,7 +521,7 @@ func (res *Result) String() string {
 	if !res.Valid {
 		valid = "failed"
 	}
-	return fmt.Sprintf("'%s' (type: %v) item: '%+v', expr: '%s'  : %s",
+	return fmt.Sprintf("'%s' (type: %v) item: '%+v', expr: '%s' : %s",
 		res.Name, tstr, res.Value, res.Expr, valid)
 }
 
