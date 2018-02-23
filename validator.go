@@ -1,18 +1,3 @@
-// Package tageval implements per-field validation for struct
-// members by adding custom tags containing expressions.  There
-// are two types of validation supported: boolean JavaScript
-// expressions and regular expression evaluations.
-//
-// The JavaScript expressions are evaluated using the "otto" embedded
-// JavaScript engine, and may be applied to any struct field (including
-// slices, nested structs, channels, or pointers to these types).
-// Regexp evaluation may be applied to any field of type string,
-// fmt.Stringer, int, uint and bool types.  Other types use the default
-// fmt package representation to prduce a string value for regexp.
-//
-// A simple boolean describing whether the overall valdation succeeded is
-// returned, as well as a detailed list containing the results of each
-// failed evaluation (and optionally successful evaluations) is returned.
 package tageval
 
 import (
