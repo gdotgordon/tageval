@@ -31,8 +31,9 @@ func Example() {
 	tageval.PrintResults(os.Stdout, res)
 	// Output:
 	// Results:
-	// 'A' (type: int) item: '4', expr: 'A > 5' : failed
+	// 'Total' (type: int) item: '4', expr: 'Total > 5' : failed
 	// 'State' (type: string) item: 'ARK', expr: '^[A-Z]{2}$' : failed
+
 }
 
 func ExampleValidator_ValidateAddressable() {
