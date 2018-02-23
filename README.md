@@ -157,5 +157,5 @@ In the example above, you could use a ";" to still include your validation expre
 Please see the unit tests for some more advanced examples and ideas.  One interesting case is how a struct member that is an `interface` is handled with regard to its concrete value.
 
 ## Concurrency
-As the _otto_ JavaScript engine does not support concurrent access (as per the documentation), you should create a `Validator` for each concurrently running goroutine.  These items are low overhead.  The other design alternative is for _tageval_ to add mutexes around each JavaScript evaluation, and this, along with other alternatives, are currently being explored.
+As the _otto_ JavaScript engine does not support concurrent access (as per the documentation), you should create a `Validator` for each concurrently running goroutine.  These items are low overhead.  In fact there is a `Copy()` method defined on the Validator that will preserve custom mappings.  The other design alternative is for _tageval_ to add mutexes around each JavaScript evaluation, and this, along with other alternatives, are currently being explored.
 
