@@ -1,6 +1,6 @@
 /*
-Package to validate Go struct fields via either JavaScript expressions or
-regular expressions.
+Package tageval validates Go struct fields via either JavaScript expressions
+or regular expressions.
 
 This package implements per-field validation for Go struct members using
 custom field tags. It attempts to provide a flexible and extensible API,
