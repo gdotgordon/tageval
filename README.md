@@ -52,7 +52,8 @@ func main() {
 	os.Exit(1)
     }
     if !ok {
-        t.Fatalf("unexpected failure result")
+        fmt.Fprintf(os.Stderr, "unexpected failure result")
+	os.Exit(1)
     }
     tageval.PrintResults(os.Stdout, res)
 }
