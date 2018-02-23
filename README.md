@@ -51,8 +51,8 @@ func main() {
         fmt.Fprintf(os.Stderr, "validation failed with error: %v", err)
 	os.Exit(1)
     }
-    if !ok {
-        fmt.Fprintf(os.Stderr, "unexpected failure result")
+    if ok {
+        fmt.Fprintf(os.Stderr, "unexpected success result")
 	os.Exit(1)
     }
     tageval.PrintResults(os.Stdout, res)
