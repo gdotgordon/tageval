@@ -75,7 +75,7 @@ type Option struct {
 // equivalent or analagous to a Go type, or at least useful for
 // evaluation purposes.
 //
-// Unfortunaltey, the built in JavaScript interpreter may treat some
+// Unfortunately, the built in JavaScript interpreter may treat some
 // semantically meaningful types as generic structs, and because
 // the fields are mostly private, they aren't too useful in JavaScript.
 // It may be helpful to view the built-in mapping of time.Time

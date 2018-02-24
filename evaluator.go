@@ -40,7 +40,7 @@ func newEvaluator() *evaluator {
 // which should return a js type-creation expression, and wraps
 // that in an otto object, so it may be used with the engine.
 func (e *evaluator) addTypeMapping(t reflect.Type, f TypeMapper) {
-	tmf := func(i interface{}) (*otto.Object, error) {
+	e.mapping[t] = func(i interface{}) (*otto.Object, error) {
 		obj, err := e.vm.Object(f(i))
 		if err != nil {
 			return nil, fmt.Errorf(
@@ -49,7 +49,6 @@ func (e *evaluator) addTypeMapping(t reflect.Type, f TypeMapper) {
 		}
 		return obj, nil
 	}
-	e.mapping[t] = tmf
 }
 
 func (e *evaluator) copy() *evaluator {
