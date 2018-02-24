@@ -150,7 +150,7 @@ func NewValidator(options ...Option) (*Validator, error) {
 // own type mapping to be used by the js engine.  The type
 // mapping function is explained in the TypeMapper type
 // declaration (above).
-func (v *Validator) AddTypeMapping(t reflect.Type, tm TypeMapper) {
+func (v Validator) AddTypeMapping(t reflect.Type, tm TypeMapper) {
 	v.eval.addTypeMapping(t, tm)
 }
 
@@ -158,7 +158,7 @@ func (v *Validator) AddTypeMapping(t reflect.Type, tm TypeMapper) {
 // for each goroutine using validation is a solution for the lack of
 // concurrency in the underlying Javascript engine.  Note the caches
 // of compiled expressions and regexps are not copied.
-func (v *Validator) Copy() *Validator {
+func (v Validator) Copy() *Validator {
 	return &Validator{v.processAsJSON, v.showSuccesses, v.eval.copy()}
 }
 
@@ -168,7 +168,7 @@ func (v *Validator) Copy() *Validator {
 // This function returns the results of all validations, or an error if
 // something went wrong.  Note, failed validations do not cause an error
 // to be returned.
-func (v *Validator) Validate(item interface{}) (bool, []Result, error) {
+func (v Validator) Validate(item interface{}) (bool, []Result, error) {
 	return v.doValidation(reflect.ValueOf(item), true)
 }
 
@@ -178,7 +178,7 @@ func (v *Validator) Validate(item interface{}) (bool, []Result, error) {
 // This variant should only be used if it is desired to perform expression
 // evaluation on private fields that are not of primitive type, as it
 // requires the "unsafe" package to crete an item.
-func (v *Validator) ValidateAddressable(itemAddr interface{}) (bool,
+func (v Validator) ValidateAddressable(itemAddr interface{}) (bool,
 	[]Result, error) {
 	rv := reflect.ValueOf(itemAddr)
 	switch rv.Kind() {
@@ -190,7 +190,7 @@ func (v *Validator) ValidateAddressable(itemAddr interface{}) (bool,
 	return v.doValidation(rv.Elem(), false)
 }
 
-func (v *Validator) doValidation(rv reflect.Value, safe bool) (
+func (v Validator) doValidation(rv reflect.Value, safe bool) (
 	bool, []Result, error) {
 
 	var res []Result
@@ -211,7 +211,7 @@ func (v *Validator) doValidation(rv reflect.Value, safe bool) (
 // traverse the value, eventually landing on a struct type,
 // which is where the tags are found.  Types such as built-ins
 // and channels require no further processing, so no action happens.
-func (v *Validator) traverse(val reflect.Value, safe bool,
+func (v Validator) traverse(val reflect.Value, safe bool,
 	res *[]Result) error {
 	var err error
 	t := val.Type()
@@ -297,7 +297,7 @@ func (v *Validator) traverse(val reflect.Value, safe bool,
 // Check the tags to see if there is something we need to validate.
 // Validation can also only occur if our custom tags are present,
 // although the json tag need not be present.
-func (v *Validator) processTag(f reflect.StructField,
+func (v Validator) processTag(f reflect.StructField,
 	val reflect.Value, safe bool, res *[]Result) error {
 
 	// Our expression eval tags.
@@ -457,7 +457,7 @@ func (v *Validator) processTag(f reflect.StructField,
 // For regexps, use a reasonable string value if we can
 // determine one for the type, otherwise use the default
 // "fmt" string conversion.
-func (v *Validator) iToStr(i interface{}) string {
+func (v Validator) iToStr(i interface{}) string {
 	switch i.(type) {
 	case string:
 		return i.(string)
