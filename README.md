@@ -140,7 +140,7 @@ type Inner struct {
 }
 
 type Outer struct {
-    I      Inner `expr:"I[\"Name\"].length > 2 && I[\"Location\"] == \"Oshkosh, WI\""`
+    I      Inner `expr:"I['Name'].length > 2 && I['Location'] == 'Oshkosh, WI'"`
 }
 ```
 
