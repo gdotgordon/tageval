@@ -150,6 +150,8 @@ One way to debug situations such as these, where you may not be certain of the m
 type Outer struct {
     I      Inner `expr:"console.log('Fields of I:' + Object.keys(I))"`
 }
+
+... prints: Fields of I:Name,Location
 ```
 In the example above, you could use a ";" to still include your validation expression after the console log.  In general, an expression can consist of multiple ";" statements.
 
