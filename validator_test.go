@@ -44,7 +44,7 @@ type MyStruct struct {
 	D      []Another `json:"d,omitempty" expr:"D.length == 1"`
 	E      *byte     `expr:"E == 4"`
 	F      chan Another
-	G      Another `expr:"G[\"Fred\"].length > 2 && G[\"Location\"] == \"Oshkosh, WI\""`
+	G      Another `expr:"G['Fred'].length > 2 && G['Location'] == 'Oshkosh, WI'"`
 	H      Talker  `json:"talker" expr:"H < 400" regexp:"^[0-9]$"`
 	I      map[string]int
 	j      string `expr:"j[0] == 'P'"`
@@ -186,8 +186,8 @@ func TestMap(t *testing.T) {
 
 	type MapTest struct {
 		Name string
-		M    map[string]int   `expr:"M[\"Jane\"] == 5"`
-		N    map[string]Other `expr:"N[\"Bob\"][\"Where\"] == \"Somewhere\""`
+		M    map[string]int   `expr:"M['Jane'] == 5"`
+		N    map[string]Other `expr:"N['Bob']['Where'] == 'Somewhere'"`
 	}
 
 	mt := &MapTest{
@@ -246,7 +246,7 @@ func TestPrivateFields(t *testing.T) {
 	}
 
 	type noyb struct {
-		blah string  `regexp:"^ick$" expr:"blah == \"ick\""`
+		blah string  `regexp:"^ick$" expr:"blah == 'ick'"`
 		bval bool    `expr:"!bval"`
 		f    float64 `expr:"Math.sqrt(f) > 5"`
 		g    uint64  `expr:"g > 0"`
