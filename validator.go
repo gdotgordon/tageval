@@ -28,26 +28,13 @@ const (
 	RegexpTag = "regexp"
 )
 
-// Options supported and passed to "NewValidator()"".
-const (
-	// ProcessAsJSON selects whether the tag processor should
-	// obey JSON semantics when processng tags.  The value for
-	// this option is of type bool, with the default being 'true'.
-	ProcessAsJSON = "ProcessAsJson"
-
-	// ShowSuccesses also incudes successful validations in the
-	// list returned from any Vaildate() call.  The default is
-	// "false", meaning only failures are shown.
-	ShowSuccesses = "ShowSuccesses"
-)
-
 // The Validator traverses a given interface{} instance to
 // locate our custom tags as well as JSON tags.  It will
 // validate any fields that contain validation expressions,
 // either JavaScript expressions or regexps, and report back
 // The results of the validation.
 type Validator struct {
-	processAsJSON bool
+	asJSON        bool
 	showSuccesses bool
 	eval          *evaluator
 }
@@ -63,11 +50,8 @@ type Result struct {
 	Valid bool
 }
 
-// Option defines items for passing Validator configuration options.
-type Option struct {
-	Name  string
-	Value interface{}
-}
+// Option defines funcs for passing Validator configuration options.
+type Option func(*Validator)
 
 // TypeMapper delcares the signature of the function to add a
 // custom type mapping.  Essentially, the string returned is a
@@ -111,39 +95,34 @@ func init() {
 // NewValidator returns a new item capable of traversing and
 // inspecting any item (interface{}).
 func NewValidator(options ...Option) (*Validator, error) {
-	eval := newEvaluator()
-	ret := &Validator{
-		processAsJSON: true,
+	val := Validator{
+		asJSON:        true,
 		showSuccesses: false,
-		eval:          eval,
+		eval:          newEvaluator(),
 	}
-
 	for _, opt := range options {
-		switch opt.Name {
-		case ProcessAsJSON:
-			val, ok := opt.Value.(bool)
-			if !ok {
-				return nil,
-					fmt.Errorf("bool value expected for Option %s",
-						ProcessAsJSON)
-			}
-			ret.processAsJSON = val
-		case ShowSuccesses:
-			val, ok := opt.Value.(bool)
-			if !ok {
-				return nil,
-					fmt.Errorf("bool value expected for Option %s",
-						ShowSuccesses)
-			}
-			ret.showSuccesses = val
-		default:
-			return nil, fmt.Errorf("unknown option: %s", opt.Name)
-		}
+		opt(&val)
 	}
 	for k, f := range mappers {
-		eval.addTypeMapping(k, f)
+		val.eval.addTypeMapping(k, f)
 	}
-	return ret, nil
+	return &val, nil
+}
+
+// Option functions for configuring Validator.
+
+// ProcessAsJSON tells the scanner to obey JSON serialization
+// rules when processing the various struct fields.
+func AsJSON(asJSON bool) Option {
+	return func(v *Validator) {
+		v.asJSON = asJSON
+	}
+}
+
+func ShowSuccesses(showSuccesses bool) Option {
+	return func(v *Validator) {
+		v.showSuccesses = showSuccesses
+	}
 }
 
 // AddTypeMapping allows the user to declare and add their
@@ -159,7 +138,7 @@ func (v Validator) AddTypeMapping(t reflect.Type, tm TypeMapper) {
 // concurrency in the underlying Javascript engine.  Note the caches
 // of compiled expressions and regexps are not copied.
 func (v Validator) Copy() *Validator {
-	return &Validator{v.processAsJSON, v.showSuccesses, v.eval.copy()}
+	return &Validator{v.asJSON, v.showSuccesses, v.eval.copy()}
 }
 
 // Validate a Go item (or pointer) of any kind.  If the item is not
@@ -269,7 +248,7 @@ func (v Validator) traverse(val reflect.Value, safe bool,
 			// If following JSON serialization rules, skip
 			// any private fields.
 			handleTag := true
-			if v.processAsJSON {
+			if v.asJSON {
 				var first rune
 				for _, c := range f.Name {
 					first = c
@@ -308,7 +287,7 @@ func (v Validator) processTag(f reflect.StructField,
 	}
 
 	jtag, _ := f.Tag.Lookup("json")
-	if v.processAsJSON && jtag == "-" {
+	if v.asJSON && jtag == "-" {
 		// This one won't get serialized to JSON, so skip.
 		return nil
 	}
@@ -378,7 +357,7 @@ func (v Validator) processTag(f reflect.StructField,
 	// We are serializing to JSON, this is won't be processed.
 	// Note: references (not pointers) to structs are serialized
 	// to JSON in Go even if they are empty.
-	if v.processAsJSON && f.Type.Kind() != reflect.Struct {
+	if v.asJSON && f.Type.Kind() != reflect.Struct {
 		if strings.HasSuffix(jtag, ",omitempty") {
 			isZero := reflect.DeepEqual(iface,
 				reflect.Zero(reflect.TypeOf(iface)).Interface())

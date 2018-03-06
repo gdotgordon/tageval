@@ -43,9 +43,8 @@ func ExampleValidator_ValidateAddressable() {
 	p := privy{[2]int{37, 81}}
 
 	// Note Options passed to NewValidator().
-	v, err := tageval.NewValidator(
-		tageval.Option{tageval.ShowSuccesses, true},
-		tageval.Option{tageval.ProcessAsJSON, false})
+	v, err := tageval.NewValidator(tageval.ShowSuccesses(true),
+		tageval.AsJSON(false))
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "initialization failed with: %v", err)
 		os.Exit(1)
