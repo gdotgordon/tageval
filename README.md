@@ -104,7 +104,7 @@ Spec	SpecialInt `json:"spec" regexp:"^.*: [-]?[0-9]+$"`
 }
 ...
 ms1 := &SpecialStruct{-56}
-v, err := tageval.NewValidator(tageval.Option{ShowSuccesses, true})
+v, err := tageval.NewValidator(tageval.ShowSuccesses(true))
 if err != nil {
     fmt.Fprintf(os.Stderr, "initialization failed with: %v", err)
     os.Exit(1)
@@ -112,23 +112,17 @@ if err != nil {
 ok, res, err := v.Validate(ms1)
 ...
 ```
-Note there is an option to return successes in the list, as well as failures.  Options will be covered in the next section.  Also note that unlike JavaScript expressions, we don't need to specify the variable name in the expression.  So running this expression returns `true` for `ok`, and the detailed result is:
+Note the signature for to create a `Validator` is `NewValidator(options ...Option)`.  Each `Option` is a `func` paramaeter, and here we see the option to return successes in the list, as well as failures.  Options will be covered in the next section.  Also note that unlike JavaScript expressions, we don't need to specify the variable name in the expression.  So running this expression returns `true` for `ok`, and the detailed result is:
 
 `'Spec' (type: SpecialInt) item: 'I'm special, my value is: -56', expr: '^.*: [-]?[0-9]+$'  : ok`
 
 ## Options
-We saw the option to include successes in addition to failures above.  The `NewValidator()` function is _variadic_  with the signature: `func NewValidator(options ...Option) *Validator`.  An option takes a name and value as follows:
-
-```
-type Option struct {
-    Name  string
-    Value interface{}
-}
-```
+We saw the option to include successes in addition to failures above.  As mentioned, the `NewValidator()` function is _variadic_  with the signature: `func NewValidator(options ...Option) *Validator`.  Each option is defined as a `func`
+that internally sets state on the validator object.  This style for specifying an option is expressive and concise.  Note each value already has a default setting without adding the `Option` as explained below.
 
 The options currently supported are:
-* ProcessAsJSON - a `bool` which says to obey the JSON rules, as explained above, with default of true.  You'd set this to false if you want to validate every field, regardless of whether it would be serialized to JSON.
-* ShowSuccesses - by default, only failures are returned in the `[]Result`.  Setting this to `true` shows successes and failures.
+* `func AsJSON(bool) Option` - the `bool` parameter says whether to obey the JSON rules, as explained above, with default of true.  You'd set pass a `false` value if you want to validate every field, regardless of whether it would be serialized to JSON.
+* `func ShowSuccesses(bool) Option` - by default, only failures are returned in the `[]Result`.  Setting this to `true` shows successes and failures.
 
 ## JavaScript Mappings and Debugging Tips
 The biggest source of confusion is likely to be in the mappings performed from Go to JavaScript by _otto_.  There are some simple debug techniques that can help get a handle on the mappings.  As mentioned, Go structs and slices generally map to JavaScript Objects, meaning they have property maps.  Slices become Objects with members indexed by offset, and structs map to Objects indexed by struct member name.  For example, consider the following structs and note how the field names of the inner struct may be accessed to do a validation on the entire struct from the outer struct:
