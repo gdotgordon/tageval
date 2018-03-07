@@ -27,7 +27,7 @@ type MyStruct struct {
 ## How Do I Use It?
 The API itself is simple.  The expressions used may be as complex as allowed by the JavaScript language and regexp language.  They can range from a simple comparison, such as `A < 7`, to something sophisticated, such an invocation of the functional API built into JavaScript.  In fact, the field `Data` shown above uses a functional JavaScript expression to check the sum of the elements of an array.
 
-As far as the API is concerned, the default mode is to evaluate an `interface{}` instance and run any validation tags encountered.  Also, by default, Go JSON serialization rules are obeyed.  This means private fields, fields tagged with `-`, or non-struct zero value fields are skipped, but this behavior may optionally be overridden.
+As far as the API is concerned, the default mode is to evaluate an `interface{}` instance and run any validation tags encountered.  Also, by default, Go JSON serialization rules are obeyed.  This means private fields, fields tagged with `-`, or non-struct zero value fields with "omitempy" specified in the `json` tag are skipped, but this behavior may optionally be overridden.
 
 ### Quick look at expression evaluation
 Here is a very simple example:
