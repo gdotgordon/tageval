@@ -112,7 +112,7 @@ if err != nil {
 ok, res, err := v.Validate(ms1)
 ...
 ```
-Note the signature for to create a `Validator` is `NewValidator(options ...Option)`.  Each `Option` is a `func` paramaeter, and here we see the option to return successes in the list, as well as failures.  Options will be covered in the next section.  Also note that unlike JavaScript expressions, we don't need to specify the variable name in the expression.  So running this expression returns `true` for `ok`, and the detailed result is:
+Note, the signature for creating a `Validator` is `NewValidator(options ...Option)`.  Each `Option` is a `func` parameter, and here we see the option to return successes in the list, as well as failures.  Options will be covered in the next section.  Also note that unlike JavaScript expressions, we don't need to specify the variable name in the expression.  So running this expression returns `true` for `ok`, and the detailed result is:
 
 `'Spec' (type: SpecialInt) item: 'I'm special, my value is: -56', expr: '^.*: [-]?[0-9]+$'  : ok`
 
