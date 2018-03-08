@@ -94,7 +94,7 @@ func init() {
 
 // NewValidator returns a new item capable of traversing and
 // inspecting any item (interface{}).
-func NewValidator(options ...Option) (*Validator, error) {
+func NewValidator(options ...Option) *Validator {
 	val := Validator{
 		asJSON:        true,
 		showSuccesses: false,
@@ -106,7 +106,7 @@ func NewValidator(options ...Option) (*Validator, error) {
 	for k, f := range mappers {
 		val.eval.addTypeMapping(k, f)
 	}
-	return &val, nil
+	return &val
 }
 
 // Option functions for configuring Validator.

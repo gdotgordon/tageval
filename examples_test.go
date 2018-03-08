@@ -14,11 +14,7 @@ func Example() {
 	}
 
 	ms1 := &MyStruct{4, "ARK"}
-	v, err := tageval.NewValidator()
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "initialization failed with: %v", err)
-		os.Exit(1)
-	}
+	v := tageval.NewValidator()
 	ok, res, err := v.Validate(ms1)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "validation failed with error: %v", err)
@@ -43,15 +39,11 @@ func ExampleValidator_ValidateAddressable() {
 	p := privy{[2]int{37, 81}}
 
 	// Note Options passed to NewValidator().
-	v, err := tageval.NewValidator(tageval.ShowSuccesses(true),
+	v := tageval.NewValidator(tageval.ShowSuccesses(true),
 		tageval.AsJSON(false))
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "initialization failed with: %v", err)
-		os.Exit(1)
-	}
 
 	// Call to "Validate()" won't work due to private access.
-	_, _, err = v.Validate(&p)
+	_, _, err := v.Validate(&p)
 	if err == nil {
 		fmt.Fprintf(os.Stderr, "expected error on private field access")
 		os.Exit(1)

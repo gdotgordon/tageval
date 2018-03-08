@@ -70,10 +70,7 @@ func TestValidationOlio(t *testing.T) {
 		H: &ti, I: map[string]int{"green": 12, "blue": 93}, j: "Pete",
 		L: "uoiea", M: 3.14, N: time.Now().Add(2 * time.Second),
 		P: []int{1, 2, 3, 4}}
-	v, err := NewValidator(ShowSuccesses(true))
-	if err != nil {
-		t.Fatalf("error creating validator: %v", err)
-	}
+	v := NewValidator(ShowSuccesses(true))
 
 	ok, res, err := v.Validate(ms1)
 	if err != nil {
@@ -106,10 +103,7 @@ func TestValidationOlio(t *testing.T) {
 
 func TestZeroValuesOlio(t *testing.T) {
 	ms1 := &MyStruct{}
-	v, err := NewValidator(ShowSuccesses(true))
-	if err != nil {
-		t.Fatalf("error creating validator: %v", err)
-	}
+	v := NewValidator(ShowSuccesses(true))
 	ok, res, err := v.Validate(ms1)
 	if err != nil {
 		t.Fatalf("validation failed with error: %v", err)
@@ -149,10 +143,7 @@ func TestChannelExprs(t *testing.T) {
 	// we need to create custom mapping s for each channel type.
 	// In this case, we'll define functions that allows us to check
 	// the channel capacity by creating a js Object with one field.
-	v, err := NewValidator(ShowSuccesses(true), AsJSON(false))
-	if err != nil {
-		t.Fatalf("error creating validator: %v", err)
-	}
+	v := NewValidator(ShowSuccesses(true), AsJSON(false))
 	v.AddTypeMapping(reflect.TypeOf(swc.Chan1),
 		func(i interface{}) string {
 			c := i.(chan (int))
@@ -195,10 +186,7 @@ func TestMap(t *testing.T) {
 		N:    map[string]Other{"Bob": Other{"Sue", "Somewhere"}},
 	}
 
-	v, err := NewValidator(ShowSuccesses(true))
-	if err != nil {
-		t.Fatalf("error creating validator: %v", err)
-	}
+	v := NewValidator(ShowSuccesses(true))
 	ok, res, err := v.Validate(mt)
 	if err != nil {
 		t.Fatalf("validation failed with error: %v", err)
@@ -265,10 +253,7 @@ func TestPrivateFields(t *testing.T) {
 	ival := 75
 	p := privy{"Joe", 50, [2]int{3, 4}, []myob{{300, 145}}, &ival,
 		noyb{"ick", 1 > 2, 45.1, 3}, 0, nil}
-	v, err := NewValidator(AsJSON(false), ShowSuccesses(true))
-	if err != nil {
-		t.Fatalf("error creating validator: %v", err)
-	}
+	v := NewValidator(AsJSON(false), ShowSuccesses(true))
 
 	// Not addressable inside.
 	ok, res, err := v.Validate(p)
@@ -335,10 +320,7 @@ func TestEmptyInterface(t *testing.T) {
 		DoGood DoGooder
 	}
 
-	v, err := NewValidator(ShowSuccesses(true))
-	if err != nil {
-		t.Fatalf("error creating validator: %v", err)
-	}
+	v := NewValidator(ShowSuccesses(true))
 
 	ok, res, err := v.Validate(IfaceOnly{})
 	if err != nil {
@@ -355,12 +337,8 @@ func TestValidatorError(t *testing.T) {
 		BadEgg string `expr:"this omelet has no !*@&^% mushrooms"`
 	}
 
-	v, err := NewValidator(ShowSuccesses(true))
-	if err != nil {
-		t.Fatalf("error creating validator: %v", err)
-	}
-
-	_, _, err = v.Validate(Cracked{"Jumbo"})
+	v := NewValidator(ShowSuccesses(true))
+	_, _, err := v.Validate(Cracked{"Jumbo"})
 	if err == nil {
 		t.Fatalf("expected validation error did not occur.")
 	}
@@ -373,10 +351,7 @@ func TestCopyValidator(t *testing.T) {
 		C int    `expr:"== 9"`
 		D string `regexp:"^goodbye$"`
 	}
-	v, err := NewValidator(ShowSuccesses(true))
-	if err != nil {
-		t.Fatalf("error creating validator: %v", err)
-	}
+	v := NewValidator(ShowSuccesses(true))
 	vc := v.Copy()
 	ct := CopyTest{8, "hello", 10, "adios"}
 	ok, res, err := vc.Validate(ct)
@@ -404,10 +379,7 @@ func TestRegexpStringTypes(t *testing.T) {
 		D string `regexp:"^goodbye$"`
 		E string `json:"-" regexp:"hi"`
 	}
-	v, err := NewValidator(ShowSuccesses(true))
-	if err != nil {
-		t.Fatalf("error creating validator: %v", err)
-	}
+	v := NewValidator(ShowSuccesses(true))
 	rt := RegTest{-84, 345, 5 > 4, "au revoir", "hi"}
 	ok, res, err := v.Validate(rt)
 	if err != nil {
