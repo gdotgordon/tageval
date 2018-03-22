@@ -156,7 +156,7 @@ func (v Validator) Validate(item interface{}) (bool, []Result, error) {
 // a pointer to an element (i.e. &elem) rather than the element itself.
 // This variant should only be used if it is desired to perform expression
 // evaluation on private fields that are not of primitive type, as it
-// requires the "unsafe" package to crete an item.
+// requires the "unsafe" package to create an item.
 func (v Validator) ValidateAddressable(itemAddr interface{}) (bool,
 	[]Result, error) {
 	rv := reflect.ValueOf(itemAddr)
