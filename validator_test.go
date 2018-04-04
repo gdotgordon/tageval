@@ -332,6 +332,32 @@ func TestEmptyInterface(t *testing.T) {
 	PrintResults(os.Stdout, res)
 }
 
+type Doer interface {
+	Doit()
+}
+type Dogooder int
+
+func (d Dogooder) Doit() {
+	fmt.Printf("Just say no!\n")
+}
+
+func TestUnnamedMember(t *testing.T) {
+	type InheritanceMyEye struct {
+		Doer `expr:"Doer > 21"`
+	}
+
+	v := NewValidator(ShowSuccesses(true))
+	ime := InheritanceMyEye{Dogooder(25)}
+	ok, res, err := v.Validate(ime)
+	if err != nil {
+		t.Fatalf("validation failed with error: %v", err)
+	}
+	if !ok {
+		t.Fatalf("unexpected failure result")
+	}
+	PrintResults(os.Stdout, res)
+}
+
 func TestValidatorError(t *testing.T) {
 	type Cracked struct {
 		BadEgg string `expr:"this omelet has no !*@&^% mushrooms"`
