@@ -44,7 +44,7 @@ func (e *evaluator) addTypeMapping(t reflect.Type, f TypeMapper) {
 		obj, err := e.vm.Object(f(i))
 		if err != nil {
 			return nil, fmt.Errorf(
-				"Custom object creation error for %v: %s",
+				"custom object creation error for %v: %s",
 				reflect.TypeOf(i), err)
 		}
 		return obj, nil

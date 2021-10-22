@@ -94,7 +94,7 @@ func init() {
 
 // NewValidator returns a new item capable of traversing and
 // inspecting any item (interface{}).
-func NewValidator(options ...Option) *Validator {
+func NewValidator(options ...Option) (*Validator, error) {
 	val := Validator{
 		asJSON:        true,
 		showSuccesses: false,
@@ -106,7 +106,7 @@ func NewValidator(options ...Option) *Validator {
 	for k, f := range mappers {
 		val.eval.addTypeMapping(k, f)
 	}
-	return &val
+	return &val, nil
 }
 
 // Option functions for configuring Validator.
@@ -163,7 +163,7 @@ func (v Validator) ValidateAddressable(itemAddr interface{}) (bool,
 	switch rv.Kind() {
 	case reflect.Ptr, reflect.Interface:
 	default:
-		return false, nil, fmt.Errorf("Supplied item (%v) is not addressable",
+		return false, nil, fmt.Errorf("supplied item (%v) is not addressable",
 			itemAddr)
 	}
 	return v.doValidation(rv.Elem(), false)
@@ -437,11 +437,11 @@ func (v Validator) processTag(f reflect.StructField,
 // determine one for the type, otherwise use the default
 // "fmt" string conversion.
 func (v Validator) iToStr(i interface{}) string {
-	switch i.(type) {
+	switch value := i.(type) {
 	case string:
-		return i.(string)
+		return value
 	case fmt.Stringer:
-		return i.(fmt.Stringer).String()
+		return value.String()
 	case bool:
 		return fmt.Sprintf("%t", i.(bool))
 	case int, int8, int16, int32, int64:

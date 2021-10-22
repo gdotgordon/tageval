@@ -65,12 +65,12 @@ func TestValidationOlio(t *testing.T) {
 	b1 := byte(3)
 	ti := TalkingInt(7)
 	ms1 := &MyStruct{A: 1, B: time.Now(), C: "hello",
-		D: []Another{Another{"Joe", "Plano, TX"}},
+		D: []Another{{"Joe", "Plano, TX"}},
 		E: &b1, G: Another{"bingo", "Oshkosh, WI"},
 		H: &ti, I: map[string]int{"green": 12, "blue": 93}, j: "Pete",
 		L: "uoiea", M: 3.14, N: time.Now().Add(2 * time.Second),
 		P: []int{1, 2, 3, 4}}
-	v := NewValidator(ShowSuccesses(true))
+	v, _ := NewValidator(ShowSuccesses(true))
 
 	ok, res, err := v.Validate(ms1)
 	if err != nil {
@@ -103,7 +103,7 @@ func TestValidationOlio(t *testing.T) {
 
 func TestZeroValuesOlio(t *testing.T) {
 	ms1 := &MyStruct{}
-	v := NewValidator(ShowSuccesses(true))
+	v, _ := NewValidator(ShowSuccesses(true))
 	ok, res, err := v.Validate(ms1)
 	if err != nil {
 		t.Fatalf("validation failed with error: %v", err)
@@ -143,7 +143,7 @@ func TestChannelExprs(t *testing.T) {
 	// we need to create custom mapping s for each channel type.
 	// In this case, we'll define functions that allows us to check
 	// the channel capacity by creating a js Object with one field.
-	v := NewValidator(ShowSuccesses(true), AsJSON(false))
+	v, _ := NewValidator(ShowSuccesses(true), AsJSON(false))
 	v.AddTypeMapping(reflect.TypeOf(swc.Chan1),
 		func(i interface{}) string {
 			c := i.(chan (int))
@@ -163,8 +163,7 @@ func TestChannelExprs(t *testing.T) {
 	}
 
 	PrintResults(os.Stdout, res)
-	expected := []checker{checker{"Chan1", true}, checker{"Chan2", true},
-		checker{"Chan3", true}}
+	expected := []checker{{"Chan1", true}, {"Chan2", true}, {"Chan3", true}}
 	correlate(t, res, expected)
 }
 
@@ -183,10 +182,10 @@ func TestMap(t *testing.T) {
 	mt := &MapTest{
 		Name: "Mary",
 		M:    map[string]int{"Jane": 5},
-		N:    map[string]Other{"Bob": Other{"Sue", "Somewhere"}},
+		N:    map[string]Other{"Bob": {"Sue", "Somewhere"}},
 	}
 
-	v := NewValidator(ShowSuccesses(true))
+	v, _ := NewValidator(ShowSuccesses(true))
 	ok, res, err := v.Validate(mt)
 	if err != nil {
 		t.Fatalf("validation failed with error: %v", err)
@@ -195,13 +194,13 @@ func TestMap(t *testing.T) {
 		t.Fatalf("unexpected failure result")
 	}
 
-	expected := []checker{checker{"M", true}, checker{"N", true}}
+	expected := []checker{{"M", true}, {"N", true}}
 	correlate(t, res, expected)
 
 	mt = &MapTest{
 		Name: "Mary",
 		M:    map[string]int{"Jane": 5},
-		N:    map[string]Other{"Bob": Other{"Sue", "Anywhere"}},
+		N:    map[string]Other{"Bob": {"Sue", "Anywhere"}},
 	}
 	ok, res, err = v.Validate(mt)
 	if err != nil {
@@ -212,7 +211,7 @@ func TestMap(t *testing.T) {
 	}
 
 	PrintResults(os.Stdout, res)
-	expected = []checker{checker{"M", true}, checker{"N", false}}
+	expected = []checker{{"M", true}, {"N", false}}
 	correlate(t, res, expected)
 }
 
@@ -253,22 +252,22 @@ func TestPrivateFields(t *testing.T) {
 	ival := 75
 	p := privy{"Joe", 50, [2]int{3, 4}, []myob{{300, 145}}, &ival,
 		noyb{"ick", 1 > 2, 45.1, 3}, 0, nil}
-	v := NewValidator(AsJSON(false), ShowSuccesses(true))
+	v, _ := NewValidator(AsJSON(false), ShowSuccesses(true))
 
 	// Not addressable inside.
-	ok, res, err := v.Validate(p)
+	_, _, err := v.Validate(p)
 	if err == nil {
 		t.Fatalf("did not receive expected error")
 	}
 
 	// Not addressable from the start.
-	ok, res, err = v.ValidateAddressable(p)
+	_, _, err = v.ValidateAddressable(p)
 	if err == nil {
 		t.Fatalf("did not receive expected error")
 	}
 
 	// Good to go.
-	ok, res, err = v.ValidateAddressable(&p)
+	ok, res, err := v.ValidateAddressable(&p)
 	if err != nil {
 		t.Fatalf("validation failed with error: %v", err)
 	}
@@ -299,8 +298,7 @@ func TestPrivateFields(t *testing.T) {
 	type stinger struct {
 		s *fmt.Stringer `expr:"s[1] == 7"`
 	}
-	var stgr fmt.Stringer
-	stgr = &slint{3, 7}
+	var stgr fmt.Stringer = &slint{3, 7}
 	s := stinger{&stgr}
 	ok, res, err = v.ValidateAddressable(&s)
 	if err != nil {
@@ -320,7 +318,7 @@ func TestEmptyInterface(t *testing.T) {
 		DoGood DoGooder
 	}
 
-	v := NewValidator(ShowSuccesses(true))
+	v, _ := NewValidator(ShowSuccesses(true))
 
 	ok, res, err := v.Validate(IfaceOnly{})
 	if err != nil {
@@ -346,7 +344,7 @@ func TestUnnamedMember(t *testing.T) {
 		Doer `expr:"Doer > 21"`
 	}
 
-	v := NewValidator(ShowSuccesses(true))
+	v, _ := NewValidator(ShowSuccesses(true))
 	ime := InheritanceMyEye{Dogooder(25)}
 	ok, res, err := v.Validate(ime)
 	if err != nil {
@@ -363,7 +361,7 @@ func TestValidatorError(t *testing.T) {
 		BadEgg string `expr:"this omelet has no !*@&^% mushrooms"`
 	}
 
-	v := NewValidator(ShowSuccesses(true))
+	v, _ := NewValidator(ShowSuccesses(true))
 	_, _, err := v.Validate(Cracked{"Jumbo"})
 	if err == nil {
 		t.Fatalf("expected validation error did not occur.")
@@ -377,7 +375,7 @@ func TestCopyValidator(t *testing.T) {
 		C int    `expr:"== 9"`
 		D string `regexp:"^goodbye$"`
 	}
-	v := NewValidator(ShowSuccesses(true))
+	v, _ := NewValidator(ShowSuccesses(true))
 	vc := v.Copy()
 	ct := CopyTest{8, "hello", 10, "adios"}
 	ok, res, err := vc.Validate(ct)
@@ -389,23 +387,23 @@ func TestCopyValidator(t *testing.T) {
 	}
 	PrintResults(os.Stdout, res)
 	expected := []checker{
-		checker{"A", true},
-		checker{"B", true},
-		checker{"C", false},
-		checker{"D", false},
+		{"A", true},
+		{"B", true},
+		{"C", false},
+		{"D", false},
 	}
 	correlate(t, res, expected)
 }
 
 func TestRegexpStringTypes(t *testing.T) {
 	type RegTest struct {
-		A int    `regexp:"^[-]?[0-9]{1,}$""`
+		A int    `regexp:"^[-]?[0-9]{1,}$"`
 		B uint32 `regexp:"^[0-9]{3}$"`
 		C bool   `regexp:"^false$"`
 		D string `regexp:"^goodbye$"`
 		E string `json:"-" regexp:"hi"`
 	}
-	v := NewValidator(ShowSuccesses(true))
+	v, _ := NewValidator(ShowSuccesses(true))
 	rt := RegTest{-84, 345, 5 > 4, "au revoir", "hi"}
 	ok, res, err := v.Validate(rt)
 	if err != nil {
@@ -416,10 +414,10 @@ func TestRegexpStringTypes(t *testing.T) {
 	}
 	PrintResults(os.Stdout, res)
 	expected := []checker{
-		checker{"A", true},
-		checker{"B", true},
-		checker{"C", false},
-		checker{"D", false},
+		{"A", true},
+		{"B", true},
+		{"C", false},
+		{"D", false},
 	}
 	correlate(t, res, expected)
 }

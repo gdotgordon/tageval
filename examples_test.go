@@ -14,7 +14,7 @@ func Example() {
 	}
 
 	ms1 := &MyStruct{4, "ARK"}
-	v := tageval.NewValidator()
+	v, _ := tageval.NewValidator()
 	ok, res, err := v.Validate(ms1)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "validation failed with error: %v", err)
@@ -39,7 +39,7 @@ func ExampleValidator_ValidateAddressable() {
 	p := privy{[2]int{37, 81}}
 
 	// Note Options passed to NewValidator().
-	v := tageval.NewValidator(tageval.ShowSuccesses(true),
+	v, _ := tageval.NewValidator(tageval.ShowSuccesses(true),
 		tageval.AsJSON(false))
 
 	// Call to "Validate()" won't work due to private access.
