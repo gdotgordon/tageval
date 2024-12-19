@@ -3,7 +3,6 @@ package tageval
 import (
 	"fmt"
 	"io"
-	"io/ioutil"
 	"log"
 )
 
@@ -41,10 +40,10 @@ type logger struct {
 // NewLogger creates a new logger that writes to the specifed writer,
 // and uses the supplied logging level.
 func newLogger(writer io.Writer, level logLevel) *logger {
-	traceHandle := ioutil.Discard
-	infoHandle := ioutil.Discard
-	warningHandle := ioutil.Discard
-	errorHandle := ioutil.Discard
+	traceHandle := io.Discard
+	infoHandle := io.Discard
+	warningHandle := io.Discard
+	errorHandle := io.Discard
 
 	// Was I just looking for a valid use case for "fallthough"?
 	// I think this may be one of those cases where it makes sense.
