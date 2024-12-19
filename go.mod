@@ -1,7 +1,10 @@
 module github.com/gdotgordon/tageval
 
-go 1.17
+go 1.23
 
-require github.com/robertkrimen/otto v0.0.0-20211019175142-5b0d97091c6f
+require github.com/robertkrimen/otto v0.5.1
 
-require gopkg.in/sourcemap.v1 v1.0.5 // indirect
+require (
+	golang.org/x/text v0.4.0 // indirect
+	gopkg.in/sourcemap.v1 v1.0.5 // indirect
+)
