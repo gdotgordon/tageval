@@ -57,10 +57,6 @@ type MyStruct struct {
 	Talker               // Not supported, as we don't have a name.
 }
 
-func (ms MyStruct) move(string) (int, error) {
-	return 45, nil
-}
-
 func TestValidationOlio(t *testing.T) {
 	b1 := byte(3)
 	ti := TalkingInt(7)
